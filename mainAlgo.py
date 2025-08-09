@@ -1,9 +1,12 @@
+# mainAlgo.py
 from ultralytics import YOLO
 import cv2
 import os
 import pandas as pd
 import csv
 import re
+import json
+import sys
 
 # =========================
 # Constants for YOLO processing
@@ -25,12 +28,20 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALL_CROSSINGS_DIR = os.path.join(BASE_DIR, "All_Crossings")
 ROUTE_SIGNAL_FILE = os.path.join(BASE_DIR, "routeSignal.csv")
 SUMMARY_OUTPUT = os.path.join(BASE_DIR, "lane1_summary.csv")
+FASTEST_OUTPUT = os.path.join(BASE_DIR, "fastest_route.json")
 
 # =========================
 # YOLO model setup
 # =========================
-model = YOLO("yolov8m.pt")
-vehicle_classes = ['car', 'truck', 'bus', 'motorbike', 'bicycle']
+# If running on a server without GPU or ultralytics installed, you may need to stub this out.
+# Keep your original model load if available.
+try:
+    model = YOLO("yolov8m.pt")
+    vehicle_classes = ['car', 'truck', 'bus', 'motorbike', 'bicycle']
+except Exception as e:
+    model = None
+    vehicle_classes = ['car', 'truck', 'bus', 'motorbike', 'bicycle']
+    print("[Warning] YOLO model failed to load. Running limited mode (no detection).", file=sys.stderr)
 
 
 # =========================
@@ -38,11 +49,17 @@ vehicle_classes = ['car', 'truck', 'bus', 'motorbike', 'bicycle']
 # =========================
 def count_vehicles(results):
     """Count only vehicles of interest from YOLO detections."""
+    if model is None:
+        return 0
     names = model.names
     count = 0
     for r in results:
+        # r.boxes.cls is a tensor-like; convert to list if necessary
         for cls in r.boxes.cls:
-            label = names[int(cls)]
+            try:
+                label = names[int(cls)]
+            except Exception:
+                continue
             if label in vehicle_classes:
                 count += 1
     return count
@@ -63,17 +80,35 @@ def process_crossing(crossing_path):
 
     data = []
 
+    if not os.path.isdir(lanes_path):
+        return data
+
     for lane_img in sorted(os.listdir(lanes_path)):
         if lane_img.lower().endswith(('.png', '.jpg', '.jpeg')):
             image_path = os.path.join(lanes_path, lane_img)
-            image = cv2.imread(image_path)
-            results = model(image, conf=0.35)
-            count = count_vehicles(results)
+            try:
+                image = cv2.imread(image_path)
+                if model:
+                    results = model(image, conf=0.35)
+                    count = count_vehicles(results)
+                    annotated_image = results[0].plot()
+                else:
+                    # fallback: 0 vehicles if model not available
+                    count = 0
+                    annotated_image = image
+            except Exception as e:
+                print(f"[Error] processing {image_path}: {e}", file=sys.stderr)
+                count = 0
+                annotated_image = None
+
             signal_time = calculate_signal_time(count)
 
-            # Save annotated image
-            annotated_image = results[0].plot()
-            cv2.imwrite(os.path.join(output_path, f"annotated_{lane_img}"), annotated_image)
+            # Save annotated image if available
+            try:
+                if annotated_image is not None:
+                    cv2.imwrite(os.path.join(output_path, f"annotated_{lane_img}"), annotated_image)
+            except Exception as e:
+                print(f"[Warning] failed to write annotated image: {e}", file=sys.stderr)
 
             data.append({
                 "Lane": lane_img,
@@ -81,13 +116,19 @@ def process_crossing(crossing_path):
                 "Signal Time (s)": signal_time
             })
 
-            print(f"[{crossing_path}] {lane_img}: {count} vehicles => Signal Time: {signal_time}s")
+            print(f"[{crossing_path}] {lane_img}: {count} vehicles => Signal Time: {signal_time}s", file=sys.stderr)
 
     # Save CSV for this crossing
-    df = pd.DataFrame(data)
-    output_csv_path = os.path.join(output_path, "lane_counts.csv")
-    df.to_csv(output_csv_path, index=False)
-    print(f"✅ Saved: {output_csv_path}")
+    if data:
+        df = pd.DataFrame(data)
+        output_csv_path = os.path.join(output_path, "lane_counts.csv")
+        try:
+            df.to_csv(output_csv_path, index=False)
+            print(f"✅ Saved: {output_csv_path}", file=sys.stderr)
+        except Exception as e:
+            print(f"[Warning] Failed to write lane_counts.csv for {crossing_path}: {e}", file=sys.stderr)
+
+    return data
 
 
 def get_crossings_from_route_signal(csv_path):
@@ -97,17 +138,17 @@ def get_crossings_from_route_signal(csv_path):
             reader = csv.DictReader(csvfile)
             rows = list(reader)
     except Exception as e:
-        print(f"❌ Error reading {csv_path}: {e}")
+        print(f"❌ Error reading {csv_path}: {e}", file=sys.stderr)
         return []
     
     if not rows:
-        print("⚠ routeSignal.csv is empty!")
+        print("⚠ routeSignal.csv is empty!", file=sys.stderr)
         return []
 
     all_signals = set()
 
     for row in rows:
-        signal_numbers_str = row.get("signal_serial_numbers", "").strip()
+        signal_numbers_str = row.get("signal_serial_numbers", "").strip().strip('"')
         if signal_numbers_str:
             for num in signal_numbers_str.split(";"):
                 num = num.strip()
@@ -123,12 +164,18 @@ def get_crossings_from_route_signal(csv_path):
 def read_lane_data(file_path):
     """Read lane_counts.csv and return {lane_name: signal_time}"""
     lane_data = {}
-    with open(file_path, 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            lane_name = row['Lane'].replace('.jpg', '').replace('.png', '').lower()
-            signal_time = int(row['Signal Time (s)'])
-            lane_data[lane_name] = signal_time
+    try:
+        with open(file_path, 'r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                lane_name = row.get('Lane', '').replace('.jpg', '').replace('.png', '').lower()
+                try:
+                    signal_time = int(row.get('Signal Time (s)', 0))
+                except Exception:
+                    signal_time = 0
+                lane_data[lane_name] = signal_time
+    except Exception as e:
+        print(f"[Warning] could not read lane data at {file_path}: {e}", file=sys.stderr)
     return lane_data
 
 
@@ -164,7 +211,10 @@ def parse_distance_time(distance_time_str):
     """Extract time in seconds from 'X km / Y min' format"""
     match = re.search(r'([\d\.]+)\s*min', distance_time_str)
     if match:
-        return float(match.group(1)) * 60
+        try:
+            return float(match.group(1)) * 60
+        except:
+            return 0
     return 0
 
 
@@ -175,10 +225,14 @@ def main():
     # Step 1: Process lanes for crossings in routeSignal.csv
     crossings_to_process = get_crossings_from_route_signal(ROUTE_SIGNAL_FILE)
     if not crossings_to_process:
-        print("⚠ No crossings to process. Exiting.")
+        print("⚠ No crossings to process. Exiting.", file=sys.stderr)
+        # Even if no crossings, we should still produce a fastest_route.json indicating no processing
+        out = {"fastest_route": None, "message": "No crossings to process", "routes": []}
+        with open(FASTEST_OUTPUT, "w") as f:
+            json.dump(out, f)
         return
 
-    print(f"📌 Processing crossings: {', '.join(crossings_to_process)}")
+    print(f"📌 Processing crossings: {', '.join(crossings_to_process)}", file=sys.stderr)
     for crossing_folder in sorted(os.listdir(ALL_CROSSINGS_DIR)):
         if crossing_folder in crossings_to_process:
             crossing_path = os.path.join(ALL_CROSSINGS_DIR, crossing_folder)
@@ -187,19 +241,22 @@ def main():
 
     # Step 2: Calculate total route times
     routes = []
-    with open(ROUTE_SIGNAL_FILE, 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            route_name = row['route'].strip('"')
-            signals_str = row['signal_serial_numbers'].strip('"')
-            signals = [s.strip() for s in signals_str.split(';') if s.strip()]
-            distance_time_str = row['distance_time'].strip('"')
-            distance_seconds = parse_distance_time(distance_time_str)
-            routes.append({
-                "name": route_name,
-                "signals": signals,
-                "distance_seconds": distance_seconds
-            })
+    try:
+        with open(ROUTE_SIGNAL_FILE, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                route_name = row['route'].strip().strip('"')
+                signals_str = row['signal_serial_numbers'].strip().strip('"')
+                signals = [s.strip() for s in signals_str.split(';') if s.strip()]
+                distance_time_str = row['distance_time'].strip().strip('"')
+                distance_seconds = parse_distance_time(distance_time_str)
+                routes.append({
+                    "name": route_name,
+                    "signals": signals,
+                    "distance_seconds": distance_seconds
+                })
+    except Exception as e:
+        print(f"[Error] reading {ROUTE_SIGNAL_FILE}: {e}", file=sys.stderr)
 
     summary_rows = []
     results = []
@@ -210,7 +267,7 @@ def main():
             crossing_folder = f"Crossing_{signal_num}"
             lane_counts_path = os.path.join(ALL_CROSSINGS_DIR, crossing_folder, "Output", "lane_counts.csv")
             if not os.path.exists(lane_counts_path):
-                print(f"[Warning] lane_counts.csv not found for {crossing_folder}")
+                print(f"[Warning] lane_counts.csv not found for {crossing_folder}", file=sys.stderr)
                 continue
 
             lane_data = read_lane_data(lane_counts_path)
@@ -231,31 +288,66 @@ def main():
         })
 
     # Save CSV with route, crossing, lane1 time
-    with open(SUMMARY_OUTPUT, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=["route", "Crossing", "Lane1 Total Time (s)"])
-        writer.writeheader()
-        writer.writerows(summary_rows)
-
-    print(f"\n[✓] Summary saved to: {SUMMARY_OUTPUT}\n")
+    try:
+        with open(SUMMARY_OUTPUT, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=["route", "Crossing", "Lane1 Total Time (s)"])
+            writer.writeheader()
+            writer.writerows(summary_rows)
+        print(f"\n[✓] Summary saved to: {SUMMARY_OUTPUT}\n", file=sys.stderr)
+    except Exception as e:
+        print(f"[Warning] could not write summary CSV: {e}", file=sys.stderr)
 
     # Print results
     for res in results:
         signal_list_str = ",".join(res["signals"])
         minutes = int(res["total_seconds"] // 60)
         seconds = int(res["total_seconds"] % 60)
-        print(f"{res['route']}: signals: {signal_list_str} | Total Time: {minutes} min {seconds} sec")
+        print(f"{res['route']}: signals: {signal_list_str} | Total Time: {minutes} min {seconds} sec", file=sys.stderr)
 
     # Filter out invalid routes (no signals AND total time = 0)
     valid_results = [r for r in results if not (len(r["signals"]) == 0 and r["total_seconds"] == 0)]
 
+    fastest_data = None
+
     # Find fastest route
     if valid_results:
         fastest = min(valid_results, key=lambda x: x["total_seconds"])
+        fastest_data = {
+            "fastest_route": fastest["route"],
+            "signals": fastest["signals"],
+            "total_seconds": fastest["total_seconds"],
+            "total_minutes": int(fastest["total_seconds"] // 60),
+            "total_seconds_only": int(fastest["total_seconds"])
+        }
         print(f"\n[FASTEST] {fastest['route']} with {','.join(fastest['signals'])} "
-              f"({int(fastest['total_seconds']//60)} min {int(fastest['total_seconds']%60)} sec)")
+              f"({int(fastest['total_seconds']//60)} min {int(fastest['total_seconds']%60)} sec)", file=sys.stderr)
     else:
-        print("\n⚠ No valid routes to compare.")
+        # No valid routes, but maybe some routes exist with distance only — pick minimum by distance_seconds
+        if results:
+            fallback = min(results, key=lambda x: x["total_seconds"])
+            fastest_data = {
+                "fastest_route": fallback["route"],
+                "signals": fallback["signals"],
+                "total_seconds": fallback["total_seconds"],
+                "total_minutes": int(fallback["total_seconds"] // 60),
+                "total_seconds_only": int(fallback["total_seconds"]),
+                "note": "No valid results with crossings; returning best available."
+            }
+        else:
+            fastest_data = {"fastest_route": None, "message": "No routes found"}
 
+    # Save JSON result file
+    try:
+        with open(FASTEST_OUTPUT, "w") as f:
+            json.dump({
+                "routes": results,
+                "fastest": fastest_data
+            }, f)
+        print(f"[✓] Wrote fastest result to {FASTEST_OUTPUT}", file=sys.stderr)
+    except Exception as e:
+        print(f"[Error] failed to write fastest_route.json: {e}", file=sys.stderr)
+        # Attempt to print JSON on stdout as fallback
+        print(json.dumps({"routes": results, "fastest": fastest_data}))
 
 if __name__ == "__main__":
     main()

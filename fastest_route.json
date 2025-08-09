@@ -1,0 +1,1 @@
+{"routes": [{"route": "most shortest", "signals": ["1"], "total_seconds": 727.0}, {"route": "2nd most shortest", "signals": ["1", "9", "14", "28"], "total_seconds": 904.0}, {"route": "3rd most shortest", "signals": [], "total_seconds": 0}], "fastest": {"fastest_route": "most shortest", "signals": ["1"], "total_seconds": 727.0, "total_minutes": 12, "total_seconds_only": 727}}

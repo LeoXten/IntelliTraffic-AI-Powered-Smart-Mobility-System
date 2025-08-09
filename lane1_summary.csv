@@ -1,2 +1,6 @@
 route,Crossing,Lane1 Total Time (s)
-most shortest,Crossing_2,117
+most shortest,Crossing_1,25
+2nd most shortest,Crossing_1,25
+2nd most shortest,Crossing_9,25
+2nd most shortest,Crossing_14,25
+2nd most shortest,Crossing_28,25

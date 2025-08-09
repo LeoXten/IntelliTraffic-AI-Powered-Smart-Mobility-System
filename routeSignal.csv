@@ -1,4 +1,4 @@
 route,signal_count,signal_serial_numbers,distance_time
-"most shortest","1","2","3.21 km / 11.7 min"
-"2nd most shortest","0","","3.88 km / 13.4 min"
+"most shortest","1","1","3.21 km / 11.7 min"
+"2nd most shortest","4","1;9;14;28","3.88 km / 13.4 min"
 "3rd most shortest","0","",""

@@ -1,530 +1,497 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Route Planner with Traffic Signals | Mapbox</title>
-  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary-color: #4264fb;
-      --primary-hover: #3151f0;
-      --secondary-color: #f8f9fa;
-      --border-color: #e0e0e0;
-      --text-color: #333;
-      --text-light: #666;
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      --radius: 8px;
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      color: var(--text-color);
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-    
-    #map {
-      flex: 1;
-      height: 100%;
-    }
-    
-    #controls {
-      position: absolute;
-      background: white;
-      padding: 16px;
-      z-index: 2;
-      top: 20px;
-      left: 20px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      width: 300px;
-      border: 1px solid var(--border-color);
-    }
-    
-    #controls h3 {
-      margin-bottom: 16px;
-      font-weight: 600;
-      color: var(--primary-color);
-    }
-    
-    .form-group {
-      margin-bottom: 12px;
-    }
-    
-    .form-group label {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-light);
-    }
-    
-    select, input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      font-family: inherit;
-      font-size: 14px;
-      transition: border 0.2s;
-    }
-    
-    select:focus, input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-    }
-    
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: var(--radius);
-      font-family: inherit;
-      font-weight: 500;
-      font-size: 15px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    
-    button:hover {
-      background-color: var(--primary-hover);
-    }
-    
-    #sidebar {
-      width: 350px;
-      background: white;
-      border-left: 1px solid var(--border-color);
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-    
-    .sidebar-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .sidebar-header h3 {
-      font-weight: 600;
-      color: var(--primary-color);
-    }
-    
-    .sidebar-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 16px 16px;
-    }
-    
-    .info-card {
-      background: var(--secondary-color);
-      border-radius: var(--radius);
-      padding: 12px;
-      margin-bottom: 16px;
-    }
-    
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    
-    .info-row:last-child {
-      margin-bottom: 0;
-    }
-    
-    .info-label {
-      font-weight: 500;
-      font-size: 14px;
-    }
-    
-    .info-value {
-      font-weight: 600;
-    }
-    
-    .section-title {
-      font-weight: 600;
-      margin: 16px 0 8px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid var(--border-color);
-      color: var(--text-light);
-      font-size: 15px;
-    }
-    
-    .step, .signal {
-      padding: 12px;
-      border-bottom: 1px solid var(--border-color);
-      cursor: pointer;
-      transition: background 0.2s;
-      font-size: 14px;
-      border-radius: var(--radius);
-      margin-bottom: 4px;
-    }
-    
-    .step:hover, .signal:hover {
-      background: rgba(66, 100, 251, 0.08);
-    }
-    
-    .step-number {
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      background: var(--primary-color);
-      color: white;
-      border-radius: 50%;
-      text-align: center;
-      line-height: 24px;
-      margin-right: 8px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    
-    .signal-icon {
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      background: #ff4757;
-      color: white;
-      border-radius: 50%;
-      text-align: center;
-      line-height: 24px;
-      margin-right: 8px;
-      font-size: 12px;
-    }
-    
-    .empty-state {
-      color: var(--text-light);
-      font-size: 14px;
-      text-align: center;
-      padding: 20px;
-    }
-    
-    @media (max-width: 768px) {
-      body {
-        flex-direction: column;
-      }
-      
-      #sidebar {
-        width: 100%;
-        height: 300px;
-      }
-      
-      #controls {
-        width: calc(100% - 40px);
-      }
-    }
-  </style>
+    <meta charset="utf-8" />
+    <title>Route Planner with Traffic Signals | Mapbox</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+      /* Minimal inline styles for basic layout if styles.css missing */
+      body, html { margin:0; height:100%; font-family:Inter, sans-serif; }
+      #map { position:absolute; top:0; right:0; bottom:0; left:300px; }
+      #sidebar { position:absolute; left:0; top:0; bottom:0; width:300px; background:#fff; overflow:auto; border-right:1px solid #ddd; padding:12px; }
+      #controls { position:absolute; top:10px; left:320px; background:rgba(255,255,255,0.95); padding:10px; border-radius:8px; z-index:2; }
+      .empty-state { color:#666; }
+      .info-row { display:flex; justify-content:space-between; margin-bottom:6px; }
+      .step { cursor:pointer; padding:6px; border-bottom:1px solid #eee; }
+      .signal { cursor:pointer; padding:6px; border-bottom:1px solid #eee; }
+    </style>
 </head>
 <body>
-<div id="map"></div>
-<div id="sidebar">
-  <div class="sidebar-header">
-    <h3>Route Information</h3>
-  </div>
-  <div class="sidebar-content">
-    <div class="info-card">
-      <div id="route-summary">
-        <div class="empty-state">No route loaded. Enter locations to begin.</div>
-      </div>
+    <div id="map"></div>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h3>Route Information</h3>
+        </div>
+        <div class="sidebar-content">
+            <div class="info-card">
+                <div id="route-summary">
+                    <div class="empty-state">No route loaded. Enter locations to begin.</div>
+                </div>
+            </div>
+            
+            <div class="section-title">Directions</div>
+            <div id="directions">
+                <div class="empty-state">Directions will appear here</div>
+            </div>
+            
+            <div class="section-title">Traffic Signals</div>
+            <div id="signal-list">
+                <div class="empty-state">Traffic signals along route will appear here</div>
+            </div>
+        </div>
     </div>
-    
-    <div class="section-title">Directions</div>
-    <div id="directions">
-      <div class="empty-state">Directions will appear here</div>
+
+    <div id="controls">
+        <h3>Route Planner</h3>
+        <div class="form-group">
+            <label for="start">Start Location</label>
+            <input type="text" id="start" placeholder="e.g. Kolkata Airport or 22°25'48.1\"N 88°24'18.5\"E" />
+        </div>
+        <div class="form-group">
+            <label for="end">Destination</label>
+            <input type="text" id="end" placeholder="e.g. Howrah Station or 22°25'48.1\"N 88°24'18.5\"E" />
+        </div>
+        <div class="form-group">
+            <label for="mode">Travel Mode</label>
+            <select id="mode">
+                <option value="driving">🚗 Car</option>
+                <option value="motorcycling">🏍 Motorcycle</option>
+                <option value="walking">🚶 Walking</option>
+            </select>
+        </div>
+        <button type="button" id="findRouteBtn">Find Optimal Route</button>
+        <button type="button" id="findShortestRouteBtn" style="margin-top:8px;">Find Shortest Route</button>
+        <div id="processing" style="margin-top:8px; color:#333;"></div>
     </div>
-    
-    <div class="section-title">Traffic Signals</div>
-    <div id="signal-list">
-      <div class="empty-state">Traffic signals along route will appear here</div>
-    </div>
-  </div>
-</div>
 
-<div id="controls">
-  <h3>Route Planner</h3>
-  <div class="form-group">
-    <label for="start">Start Location</label>
-    <input type="text" id="start" placeholder="e.g. Kolkata Airport" />
-  </div>
-  <div class="form-group">
-    <label for="end">Destination</label>
-    <input type="text" id="end" placeholder="e.g. Howrah Station" />
-  </div>
-  <div class="form-group">
-    <label for="mode">Travel Mode</label>
-    <select id="mode">
-      <option value="driving">🚗 Car</option>
-      <option value="motorcycling">🏍 Motorcycle</option>
-      <option value="walking">🚶 Walking</option>
-    </select>
-  </div>
-  <button type="button" id="findRouteBtn">Find Route</button>
-</div>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibGlvbmVsLTEwIiwiYSI6ImNtY202YnNrNzBqMXcyanM5MmJxcGd3eTcifQ.nRr1tRDNvPFgeTMgfO_H4Q';
 
-<script>
-mapboxgl.accessToken = 'pk.eyJ1IjoibGlvbmVsLTEwIiwiYSI6ImNtY202YnNrNzBqMXcyanM5MmJxcGd3eTcifQ.nRr1tRDNvPFgeTMgfO_H4Q';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [88.3639, 22.5726],
+            zoom: 11
+        });
 
-const map = new mapboxgl.Map({
-  container: 'map',
-  style: 'mapbox://styles/mapbox/streets-v11',
-  center: [88.3639, 22.5726],
-  zoom: 11
-});
+        let signalData = [];
+        let routeLayerId = "selected-route";
+        let signalMarkers = [];
+        let startMarker = null;
+        let endMarker = null;
+        let signalsLoaded = false;
+        let lastRoutes = []; // will hold the 3 route objects with coordinates
 
-let signalData = [];
-let routeLayerId = "selected-route";
-let signalMarkers = [];
-let signalsLoaded = false;
+        function dmsToDecimal(dmsStr) {
+            // Handle coordinate pairs like "22°25'48.1\"N 88°24'18.5\"E"
+            if (dmsStr.includes(" ")) {
+                const parts = dmsStr.split(" ");
+                if (parts.length === 2) {
+                    const lat = dmsToDecimal(parts[0]);
+                    const lon = dmsToDecimal(parts[1]);
+                    if (lat !== null && lon !== null) {
+                        return [lon, lat];
+                    }
+                }
+                return null;
+            }
+            
+            // Handle single coordinate like "22°25'48.1\"N"
+            const regex = /(\d+)°(\d+)'([\d.]+)"([NSEW])/i;
+            const parts = dmsStr.match(regex);
+            if (!parts) return null;
+            let deg = parseFloat(parts[1]);
+            let min = parseFloat(parts[2]);
+            let sec = parseFloat(parts[3]);
+            let dir = parts[4].toUpperCase();
+            let decimal = deg + min / 60 + sec / 3600;
+            if (dir === 'S' || dir === 'W') decimal *= -1;
+            return decimal;
+        }
 
-function dmsToDecimal(dmsStr) {
-  const regex = /(\d+)°(\d+)'([\d.]+)"([NSEW])/i;
-  const parts = dmsStr.match(regex);
-  if (!parts) return null;
-  let deg = parseFloat(parts[1]);
-  let min = parseFloat(parts[2]);
-  let sec = parseFloat(parts[3]);
-  let dir = parts[4].toUpperCase();
-  let decimal = deg + min / 60 + sec / 3600;
-  if (dir === 'S' || dir === 'W') decimal *= -1;
-  return decimal;
-}
+        async function loadSignalCSV() {
+            try {
+                const response = await fetch('signal.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                lines.slice(1).forEach(line => {
+                    const parts = line.split(',');
+                    if (parts.length < 4) return;
+                    const slNo = parts[0].trim();
+                    const name = parts[1].trim();
+                    const latDMS = parts[2].trim();
+                    const lonDMS = parts[3].trim();
+                    const lat = dmsToDecimal(latDMS);
+                    const lon = dmsToDecimal(lonDMS);
+                    if (lat !== null && lon !== null) {
+                        signalData.push({ slNo, name, coordinates: [lon, lat] });
+                    }
+                });
+                signalsLoaded = true;
+                console.log("Traffic signals loaded.");
+            } catch (err) {
+                console.error("Failed to load signal.csv:", err);
+            }
+        }
 
-async function loadSignalCSV() {
-  const response = await fetch('signal.csv');
-  const text = await response.text();
-  const lines = text.trim().split('\n');
-  lines.slice(1).forEach(line => {
-    const parts = line.split(',');
-    if (parts.length < 4) return;
-    const slNo = parts[0].trim();
-    const name = parts[1].trim();
-    const latDMS = parts[2].trim();
-    const lonDMS = parts[3].trim();
-    const lat = dmsToDecimal(latDMS);
-    const lon = dmsToDecimal(lonDMS);
-    if (lat !== null && lon !== null) {
-      signalData.push({ slNo, name, coordinates: [lon, lat] });
-    }
-  });
-  signalsLoaded = true;
-}
+        async function geocode(place) {
+            // Check if input is in DMS format
+            const dmsCoords = dmsToDecimal(place);
+            if (dmsCoords && Array.isArray(dmsCoords)) {
+                return dmsCoords;
+            }
+            
+            // Otherwise do regular geocoding
+            const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?access_token=${mapboxgl.accessToken}`);
+            const data = await res.json();
+            return data.features[0]?.geometry.coordinates || null;
+        }
 
-async function geocode(place) {
-  const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?access_token=${mapboxgl.accessToken}`);
-  const data = await res.json();
-  return data.features[0]?.geometry.coordinates || null;
-}
+        async function getRoutes(startCoord, endCoord, mode) {
+            let apiMode = mode === "motorcycling" ? "driving" : mode;
+            const query = await fetch(`https://api.mapbox.com/directions/v5/mapbox/${apiMode}/${startCoord.join(',')};${endCoord.join(',')}?geometries=geojson&alternatives=true&steps=true&access_token=${mapboxgl.accessToken}`);
+            const json = await query.json();
+            if (!json.routes || json.routes.length === 0) return [];
 
-async function getRoutes(startCoord, endCoord, mode) {
-  let apiMode = mode === "motorcycling" ? "driving" : mode;
-  const query = await fetch(`https://api.mapbox.com/directions/v5/mapbox/${apiMode}/${startCoord.join(',')};${endCoord.join(',')}?geometries=geojson&alternatives=true&steps=true&access_token=${mapboxgl.accessToken}`);
-  const json = await query.json();
-  if (!json.routes || json.routes.length === 0) return [];
+            let routes = json.routes.map((r, idx) => ({
+                index: idx + 1,
+                coordinates: r.geometry.coordinates,
+                distanceKm: (r.distance / 1000).toFixed(2),
+                durationMin: (r.duration / 60).toFixed(1),
+                steps: r.legs[0].steps
+            }));
+            routes.sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
+            return routes.slice(0, 3);
+        }
 
-  let routes = json.routes.map((r, idx) => ({
-    index: idx + 1,
-    coordinates: r.geometry.coordinates,
-    distanceKm: (r.distance / 1000).toFixed(2),
-    durationMin: (r.duration / 60).toFixed(1),
-    steps: r.legs[0].steps
-  }));
-  routes.sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
-  return routes.slice(0, 3);
-}
+        function findSignalsForRoute(routeCoords) {
+            if (routeCoords.length < 2) return [];
+            
+            // Create a line string from the route coordinates
+            const routeLine = turf.lineString(routeCoords);
+            
+            // Create a precise buffer around the route
+            const buffer = turf.buffer(routeLine, 0.05, { units: 'kilometers' }); // 50 meter buffer
+            
+            // Find signals that are both within the buffer AND near a route segment
+            return signalData.filter(sig => {
+                const point = turf.point(sig.coordinates);
+                
+                // First check if within the buffer
+                if (!turf.booleanPointInPolygon(point, buffer)) {
+                    return false;
+                }
+                
+                // Then verify it's actually near a segment (not just in the general area)
+                let minDistance = Infinity;
+                for (let i = 0; i < routeCoords.length - 1; i++) {
+                    const segment = turf.lineString([routeCoords[i], routeCoords[i+1]]);
+                    const distance = turf.pointToLineDistance(point, segment, { units: 'kilometers' });
+                    minDistance = Math.min(minDistance, distance);
+                    if (distance <= 0.05) { // 50 meters
+                        return true;
+                    }
+                }
+                
+                return false;
+            });
+        }
 
-function findSignalsForRoute(routeCoords) {
-  const routeLine = turf.lineString(routeCoords);
-  const buffer = turf.buffer(routeLine, 0.3, { units: 'kilometers' });
+        function flyToPoint(coords) {
+            map.flyTo({ center: coords, zoom: 16 });
+            const tempMarker = new mapboxgl.Marker({ 
+                color: 'yellow',
+                scale: 1.2
+            })
+                .setLngLat(coords)
+                .addTo(map);
 
-  return signalData.filter(sig => {
-    const point = turf.point(sig.coordinates);
-    return turf.booleanPointInPolygon(point, buffer);
-  });
-}
+            setTimeout(() => {
+                tempMarker.remove();
+                if (startMarker) startMarker.addTo(map);
+                if (endMarker) endMarker.addTo(map);
+                signalMarkers.forEach(m => m.addTo(map));
+            }, 1500);
+        }
 
-function flyToPoint(coords) {
-  map.flyTo({ center: coords, zoom: 16 });
-  const tempMarker = new mapboxgl.Marker({ color: 'yellow' })
-    .setLngLat(coords)
-    .addTo(map);
+        async function sendRouteData(routeData) {
+            try {
+                const resp = await fetch('/saveRouteSignals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(routeData)
+                });
+                const json = await resp.json();
+                return json;
+            } catch (err) {
+                console.error("Error sending route data to backend:", err);
+                return { success: false, error: String(err) };
+            }
+        }
 
-  setTimeout(() => {
-    tempMarker.remove();
-    signalMarkers.forEach(m => m.addTo(map));
-  }, 1500);
-}
+        async function getSelectedRoute() {
+            if (!signalsLoaded) {
+                alert("Traffic signals data not loaded yet. Please try again shortly.");
+                return;
+            }
 
-async function sendRouteData(routeData) {
-  try {
-    await fetch('/saveRouteSignals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(routeData)
-    });
-  } catch (err) {
-    console.error("Error sending route data to backend:", err);
-  }
-}
+            const startPlace = document.getElementById('start').value.trim();
+            const endPlace = document.getElementById('end').value.trim();
+            const mode = document.getElementById('mode').value;
 
-async function getSelectedRoute() {
-  if (!signalsLoaded) {
-    alert("Traffic signals data not loaded yet. Please try again shortly.");
-    return;
-  }
+            if (!startPlace || !endPlace) {
+                alert("Please enter both start and end locations");
+                return;
+            }
 
-  const startPlace = document.getElementById('start').value.trim();
-  const endPlace = document.getElementById('end').value.trim();
-  const mode = document.getElementById('mode').value;
+            document.getElementById('processing').innerText = "Geocoding and fetching routes...";
+            const startCoord = await geocode(startPlace);
+            const endCoord = await geocode(endPlace);
+            if (!startCoord || !endCoord) {
+                alert("Could not geocode one or both locations");
+                document.getElementById('processing').innerText = "";
+                return;
+            }
 
-  if (!startPlace || !endPlace) {
-    alert("Please enter both start and end locations");
-    return;
-  }
+            document.getElementById('processing').innerText = "Fetching alternative routes...";
+            const routes = await getRoutes(startCoord, endCoord, mode);
+            if (routes.length === 0) {
+                alert("No routes found.");
+                document.getElementById('processing').innerText = "";
+                return;
+            }
 
-  const startCoord = await geocode(startPlace);
-  const endCoord = await geocode(endPlace);
-  if (!startCoord || !endCoord) {
-    alert("Could not geocode one or both locations");
-    return;
-  }
+            lastRoutes = routes; // store for later
 
-  const routes = await getRoutes(startCoord, endCoord, mode);
-  if (routes.length === 0) {
-    alert("No routes found.");
-    return;
-  }
+            // Build backend payload identical format as before
+            let backendData = [];
+            console.clear();
+            console.log(`=== Top ${routes.length} Routes for Mode: ${mode} ===`);
+            routes.forEach((r, i) => {
+                let signals = findSignalsForRoute(r.coordinates);
+                let label = i === 0 ? "most shortest" : (i === 1 ? "2nd most shortest" : "3rd most shortest");
+                console.log(`${i + 1}. ${label}`);
+                console.log(`    Distance: ${r.distanceKm} km, Time: ${r.durationMin} min`);
+                console.log(`    Traffic Signals: ${signals.length}`);
+                signals.forEach(sig => {
+                    console.log(`      - ${sig.name}: ${sig.coordinates[1]}, ${sig.coordinates[0]}`);
+                });
 
-  let backendData = [];
+                backendData.push({
+                    route: label,
+                    signal_count: signals.length,
+                    signal_serial_numbers: signals.map(s => s.slNo).join(';'),
+                    distance_time: `${r.distanceKm} km / ${r.durationMin} min`
+                });
+            });
 
-  console.clear();
-  console.log(`=== Top ${routes.length} Routes for Mode: ${mode} ===`);
-  routes.forEach((r, i) => {
-    let signals = findSignalsForRoute(r.coordinates);
-    let label = i === 0 ? "most shortest" : (i === 1 ? "2nd most shortest" : "3rd most shortest");
-    console.log(`${i + 1}. ${label}`);
-    console.log(`   Distance: ${r.distanceKm} km, Time: ${r.durationMin} min`);
-    console.log(`   Traffic Signals: ${signals.length}`);
-    signals.forEach(sig => {
-      console.log(`     - ${sig.name}: ${sig.coordinates[1]}, ${sig.coordinates[0]}`);
-    });
+            // Fill up to 3 entries if less than 3 routes
+            while (backendData.length < 3) {
+                let label = backendData.length === 0 ? "most shortest" : (backendData.length === 1 ? "2nd most shortest" : "3rd most shortest");
+                backendData.push({ route: label, signal_count: 0, signal_serial_numbers: "", distance_time: "" });
+            }
 
-    backendData.push({
-      route: label,
-      signal_count: signals.length,
-      signal_serial_numbers: signals.map(s => s.slNo).join(';'),
-      distance_time: `${r.distanceKm} km / ${r.durationMin} min`
-    });
-  });
+            // send to backend and wait for processing
+            document.getElementById('processing').innerText = "Processing routes & signals on server (this may take a few seconds)...";
+            const serverResp = await sendRouteData(backendData);
 
-  while (backendData.length < 3) {
-    let label = backendData.length === 0 ? "most shortest" : (backendData.length === 1 ? "2nd most shortest" : "3rd most shortest");
-    backendData.push({ route: label, signal_count: 0, signal_serial_numbers: "", distance_time: "" });
-  }
+            if (!serverResp || serverResp.success === false) {
+                console.error("Server processing failed:", serverResp);
+                alert("Server processing failed. See console.");
+                document.getElementById('processing').innerText = "";
+                return;
+            }
 
-  sendRouteData(backendData);
+            // serverResp.result.fastest.fastest_route contains the label (e.g. "most shortest")
+            const fastestLabel = serverResp.result && serverResp.result.fastest ? serverResp.result.fastest.fastest_route : null;
+            document.getElementById('processing').innerText = "";
 
-  const shortest = routes[0];
-  if (map.getLayer(routeLayerId)) map.removeLayer(routeLayerId);
-  if (map.getSource(routeLayerId)) map.removeSource(routeLayerId);
+            if (!fastestLabel) {
+                alert("Could not determine the optimal route from server. Showing shortest-by-distance route instead.");
+                displayRouteOnMap(routes[0], findSignalsForRoute(routes[0].coordinates), startCoord, endCoord);
+                return;
+            }
 
-  map.addSource(routeLayerId, {
-    type: 'geojson',
-    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: shortest.coordinates } }
-  });
-  map.addLayer({
-    id: routeLayerId,
-    type: 'line',
-    source: routeLayerId,
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': '#4264fb', 'line-width': 4 }
-  });
+            // Find the corresponding route in lastRoutes by label
+            const labelToIndex = { "most shortest": 0, "2nd most shortest": 1, "3rd most shortest": 2 };
+            const idx = labelToIndex[fastestLabel];
+            const chosenRoute = lastRoutes[idx] || lastRoutes[0]; // fallback to first if missing
+            const chosenSignals = findSignalsForRoute(chosenRoute.coordinates);
 
-  signalMarkers.forEach(m => m.remove());
-  signalMarkers = [];
-  let shortestSignals = findSignalsForRoute(shortest.coordinates);
-  shortestSignals.forEach(sig => {
-    const marker = new mapboxgl.Marker({ color: '#ff4757' })
-      .setLngLat(sig.coordinates)
-      .setPopup(new mapboxgl.Popup().setText(sig.name))
-      .addTo(map);
-    signalMarkers.push(marker);
-  });
+            // Draw chosen route
+            displayRouteOnMap(chosenRoute, chosenSignals, startCoord, endCoord);
 
-  document.getElementById('route-summary').innerHTML = `
-    <div class="info-row">
-      <span class="info-label">Distance</span>
-      <span class="info-value">${shortest.distanceKm} km</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Estimated Time</span>
-      <span class="info-value">${shortest.durationMin} min</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Traffic Signals</span>
-      <span class="info-value">${shortestSignals.length}</span>
-    </div>
-  `;
+            // Optionally show a message that server computed route
+            console.log("Optimal route chosen by backend:", fastestLabel, serverResp.result.fastest);
+        }
 
-  const dirContainer = document.getElementById('directions');
-  dirContainer.innerHTML = '';
-  if (shortest.steps.length === 0) {
-    dirContainer.innerHTML = '<div class="empty-state">No directions available</div>';
-  } else {
-    shortest.steps.forEach((step, idx) => {
-      const div = document.createElement('div');
-      div.className = 'step';
-      div.innerHTML = `
-        <span class="step-number">${idx + 1}</span>
-        ${step.maneuver.instruction} <small>(${(step.distance/1000).toFixed(2)} km)</small>
-      `;
-      div.onclick = () => flyToPoint(step.maneuver.location);
-      dirContainer.appendChild(div);
-    });
-  }
+        async function getShortestRoute() {
+            if (!signalsLoaded) {
+                alert("Traffic signals data not loaded yet. Please try again shortly.");
+                return;
+            }
 
-  const sigContainer = document.getElementById('signal-list');
-  sigContainer.innerHTML = '';
-  if (shortestSignals.length === 0) {
-    sigContainer.innerHTML = '<div class="empty-state">No traffic signals along this route</div>';
-  } else {
-    shortestSignals.forEach(sig => {
-      const div = document.createElement('div');
-      div.className = 'signal';
-      div.innerHTML = `
-        <span class="signal-icon">!</span>
-        ${sig.name}
-      `;
-      div.onclick = () => flyToPoint(sig.coordinates);
-      sigContainer.appendChild(div);
-    });
-  }
+            const startPlace = document.getElementById('start').value.trim();
+            const endPlace = document.getElementById('end').value.trim();
+            const mode = document.getElementById('mode').value;
 
-  map.fitBounds(turf.bbox(turf.lineString(shortest.coordinates)), { padding: 50 });
-}
+            if (!startPlace || !endPlace) {
+                alert("Please enter both start and end locations");
+                return;
+            }
 
-map.on('load', async () => {
-  await loadSignalCSV();
-  console.log("Traffic signals loaded.");
-});
+            document.getElementById('processing').innerText = "Geocoding and fetching routes...";
+            const startCoord = await geocode(startPlace);
+            const endCoord = await geocode(endPlace);
+            if (!startCoord || !endCoord) {
+                alert("Could not geocode one or both locations");
+                document.getElementById('processing').innerText = "";
+                return;
+            }
 
-document.getElementById('findRouteBtn').addEventListener('click', (e) => {
-  e.preventDefault();
-  getSelectedRoute();
-});
-</script>
+            document.getElementById('processing').innerText = "Finding shortest route...";
+            const routes = await getRoutes(startCoord, endCoord, mode);
+            if (routes.length === 0) {
+                alert("No routes found.");
+                document.getElementById('processing').innerText = "";
+                return;
+            }
+
+            // Always take the first route (shortest distance)
+            const shortestRoute = routes[0];
+            const signals = findSignalsForRoute(shortestRoute.coordinates);
+            
+            document.getElementById('processing').innerText = "";
+            displayRouteOnMap(shortestRoute, signals, startCoord, endCoord);
+        }
+
+        function displayRouteOnMap(routeObj, signalsArr, startCoord, endCoord) {
+            // Remove old route and markers
+            if (map.getLayer(routeLayerId)) map.removeLayer(routeLayerId);
+            if (map.getSource(routeLayerId)) map.removeSource(routeLayerId);
+            if (startMarker) startMarker.remove();
+            if (endMarker) endMarker.remove();
+            signalMarkers.forEach(m => m.remove());
+            signalMarkers = [];
+
+            // Add route
+            map.addSource(routeLayerId, {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: routeObj.coordinates } }
+            });
+            map.addLayer({
+                id: routeLayerId,
+                type: 'line',
+                source: routeLayerId,
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#00b894', 'line-width': 6 }
+            });
+
+            // Add start and end markers
+            startMarker = new mapboxgl.Marker({
+                color: '#00b894',
+                scale: 1.2
+            })
+                .setLngLat(startCoord)
+                .setPopup(new mapboxgl.Popup().setText('Start Point'))
+                .addTo(map);
+
+            endMarker = new mapboxgl.Marker({
+                color: '#ff4757',
+                scale: 1.2
+            })
+                .setLngLat(endCoord)
+                .setPopup(new mapboxgl.Popup().setText('End Point'))
+                .addTo(map);
+
+            // Add traffic signal markers
+            signalsArr.forEach(sig => {
+                const el = document.createElement('div');
+                el.className = 'signal-marker';
+                el.innerHTML = '🚦';
+                el.style.fontSize = '24px';
+                el.style.textAlign = 'center';
+                
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat(sig.coordinates)
+                    .setPopup(new mapboxgl.Popup().setText(sig.name))
+                    .addTo(map);
+                signalMarkers.push(marker);
+            });
+
+            // Update sidebar info
+            document.getElementById('route-summary').innerHTML = `
+                <div class="info-row">
+                    <span class="info-label">Distance</span>
+                    <span class="info-value">${routeObj.distanceKm} km</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Estimated Time</span>
+                    <span class="info-value">${routeObj.durationMin} min</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Traffic Signals</span>
+                    <span class="info-value">${signalsArr.length}</span>
+                </div>
+            `;
+
+            const dirContainer = document.getElementById('directions');
+            dir_container_clear_and_fill(dirContainer, routeObj.steps);
+
+            const sigContainer = document.getElementById('signal-list');
+            sigContainer.innerHTML = '';
+            if (signalsArr.length === 0) {
+                sigContainer.innerHTML = '<div class="empty-state">No traffic signals along this route</div>';
+            } else {
+                signalsArr.forEach(sig => {
+                    const div = document.createElement('div');
+                    div.className = 'signal';
+                    div.innerHTML = `<span class="signal-icon">🚦</span> ${sig.name}`;
+                    div.onclick = () => flyToPoint(sig.coordinates);
+                    sigContainer.appendChild(div);
+                });
+            }
+
+            try {
+                map.fitBounds(turf.bbox(turf.lineString(routeObj.coordinates)), { padding: 50 });
+            } catch (e) {
+                console.warn("fitBounds failed:", e);
+            }
+        }
+
+        function dir_container_clear_and_fill(container, steps) {
+            container.innerHTML = '';
+            if (!steps || steps.length === 0) {
+                container.innerHTML = '<div class="empty-state">No directions available</div>';
+                return;
+            }
+            steps.forEach((step, idx) => {
+                const div = document.createElement('div');
+                div.className = 'step';
+                div.innerHTML = `<span class="step-number">${idx + 1}</span> ${step.maneuver.instruction} <small>(${(step.distance/1000).toFixed(2)} km)</small>`;
+                div.onclick = () => flyToPoint(step.maneuver.location);
+                container.appendChild(div);
+            });
+        }
+
+        map.on('load', async () => {
+            await loadSignalCSV();
+        });
+
+        document.getElementById('findRouteBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            getSelectedRoute();
+        });
+
+        document.getElementById('findShortestRouteBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            getShortestRoute();
+        });
+    </script>
 </body>
 </html>
