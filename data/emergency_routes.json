@@ -1,0 +1,596 @@
+[
+  {
+    "timestamp": "2025-08-21T12:35:30.368Z",
+    "user": "emergency",
+    "routes": [
+      {
+        "route": "shortest",
+        "signal_count": 7,
+        "signal_serial_numbers": "1;2;3;4;5;6;7",
+        "distance_time": "6.08 km / 21.7 min"
+      },
+      {
+        "route": "alternate",
+        "signal_count": 8,
+        "signal_serial_numbers": "1;7;8;9;10;11;12;13",
+        "distance_time": "7.22 km / 23.6 min"
+      }
+    ],
+    "result": {
+      "routes": [
+        {
+          "route": "shortest",
+          "signals": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "signal_delays": [
+            25,
+            117,
+            5,
+            182,
+            117,
+            25,
+            25
+          ],
+          "mapbox_time": 1302,
+          "total_seconds": 1798
+        },
+        {
+          "route": "alternate",
+          "signals": [
+            "1",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ],
+          "signal_delays": [
+            25,
+            25,
+            117,
+            25,
+            25,
+            25,
+            5,
+            5
+          ],
+          "mapbox_time": 1416,
+          "total_seconds": 1668
+        }
+      ],
+      "fastest": {
+        "fastest_route": "alternate",
+        "signals": [
+          "1",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13"
+        ],
+        "total_seconds": 1668,
+        "total_minutes": 27,
+        "total_seconds_only": 1668,
+        "mapbox_time": 1416,
+        "signal_delays": [
+          25,
+          25,
+          117,
+          25,
+          25,
+          25,
+          5,
+          5
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-21T12:38:24.299Z",
+    "user": "emergency",
+    "routes": [
+      {
+        "route": "shortest",
+        "signal_count": 7,
+        "signal_serial_numbers": "1;2;3;4;5;6;7",
+        "distance_time": "6.08 km / 21.7 min"
+      },
+      {
+        "route": "alternate",
+        "signal_count": 8,
+        "signal_serial_numbers": "1;7;8;9;10;11;12;13",
+        "distance_time": "7.22 km / 23.6 min"
+      }
+    ],
+    "result": {
+      "routes": [
+        {
+          "route": "shortest",
+          "signals": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "signal_delays": [
+            25,
+            117,
+            5,
+            182,
+            117,
+            25,
+            25
+          ],
+          "mapbox_time": 1302,
+          "total_seconds": 1798
+        },
+        {
+          "route": "alternate",
+          "signals": [
+            "1",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ],
+          "signal_delays": [
+            25,
+            25,
+            117,
+            25,
+            25,
+            25,
+            5,
+            5
+          ],
+          "mapbox_time": 1416,
+          "total_seconds": 1668
+        }
+      ],
+      "fastest": {
+        "fastest_route": "alternate",
+        "signals": [
+          "1",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13"
+        ],
+        "total_seconds": 1668,
+        "total_minutes": 27,
+        "total_seconds_only": 1668,
+        "mapbox_time": 1416,
+        "signal_delays": [
+          25,
+          25,
+          117,
+          25,
+          25,
+          25,
+          5,
+          5
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-21T17:57:40.315Z",
+    "user": "emer@gmail.com",
+    "routes": [
+      {
+        "route": "shortest",
+        "signal_count": 7,
+        "signal_serial_numbers": "1;2;3;4;5;6;7",
+        "distance_time": "6.08 km / 21.7 min",
+        "emergency_priority": "high",
+        "vehicle_type": "🚒 Fire Truck"
+      },
+      {
+        "route": "alternate",
+        "signal_count": 8,
+        "signal_serial_numbers": "1;7;8;9;10;11;12;13",
+        "distance_time": "7.22 km / 23.6 min",
+        "emergency_priority": "high",
+        "vehicle_type": "🚒 Fire Truck"
+      }
+    ],
+    "result": {
+      "routes": [
+        {
+          "route": "shortest",
+          "signals": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "signal_delays": [
+            25,
+            117,
+            5,
+            182,
+            117,
+            25,
+            25
+          ],
+          "mapbox_time": 1302,
+          "total_seconds": 1798
+        },
+        {
+          "route": "alternate",
+          "signals": [
+            "1",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ],
+          "signal_delays": [
+            25,
+            25,
+            117,
+            25,
+            25,
+            25,
+            5,
+            5
+          ],
+          "mapbox_time": 1416,
+          "total_seconds": 1668
+        }
+      ],
+      "fastest": {
+        "fastest_route": "alternate",
+        "signals": [
+          "1",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13"
+        ],
+        "total_seconds": 1668,
+        "total_minutes": 27,
+        "total_seconds_only": 1668,
+        "mapbox_time": 1416,
+        "signal_delays": [
+          25,
+          25,
+          117,
+          25,
+          25,
+          25,
+          5,
+          5
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-21T17:57:40.378Z",
+    "user": "emer@gmail.com",
+    "routes": [
+      {
+        "route": "shortest",
+        "signal_count": 7,
+        "signal_serial_numbers": "1;2;3;4;5;6;7",
+        "distance_time": "6.08 km / 21.7 min",
+        "emergency_priority": "high",
+        "vehicle_type": "🚒 Fire Truck"
+      },
+      {
+        "route": "alternate",
+        "signal_count": 8,
+        "signal_serial_numbers": "1;7;8;9;10;11;12;13",
+        "distance_time": "7.22 km / 23.6 min",
+        "emergency_priority": "high",
+        "vehicle_type": "🚒 Fire Truck"
+      }
+    ],
+    "result": {
+      "routes": [
+        {
+          "route": "shortest",
+          "signals": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "signal_delays": [
+            25,
+            117,
+            5,
+            182,
+            117,
+            25,
+            25
+          ],
+          "mapbox_time": 1302,
+          "total_seconds": 1798
+        },
+        {
+          "route": "alternate",
+          "signals": [
+            "1",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ],
+          "signal_delays": [
+            25,
+            25,
+            117,
+            25,
+            25,
+            25,
+            5,
+            5
+          ],
+          "mapbox_time": 1416,
+          "total_seconds": 1668
+        }
+      ],
+      "fastest": {
+        "fastest_route": "alternate",
+        "signals": [
+          "1",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13"
+        ],
+        "total_seconds": 1668,
+        "total_minutes": 27,
+        "total_seconds_only": 1668,
+        "mapbox_time": 1416,
+        "signal_delays": [
+          25,
+          25,
+          117,
+          25,
+          25,
+          25,
+          5,
+          5
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-21T17:58:44.483Z",
+    "user": "emer@gmail.com",
+    "routes": [
+      {
+        "route": "shortest",
+        "signal_count": 7,
+        "signal_serial_numbers": "1;2;3;4;5;6;7",
+        "distance_time": "6.08 km / 21.7 min",
+        "emergency_priority": "high",
+        "vehicle_type": "🚒 Fire Truck"
+      },
+      {
+        "route": "alternate",
+        "signal_count": 8,
+        "signal_serial_numbers": "1;7;8;9;10;11;12;13",
+        "distance_time": "7.22 km / 23.6 min",
+        "emergency_priority": "high",
+        "vehicle_type": "🚒 Fire Truck"
+      }
+    ],
+    "result": {
+      "routes": [
+        {
+          "route": "shortest",
+          "signals": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "signal_delays": [
+            25,
+            117,
+            5,
+            182,
+            117,
+            25,
+            25
+          ],
+          "mapbox_time": 1302,
+          "total_seconds": 1798
+        },
+        {
+          "route": "alternate",
+          "signals": [
+            "1",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ],
+          "signal_delays": [
+            25,
+            25,
+            117,
+            25,
+            25,
+            25,
+            5,
+            5
+          ],
+          "mapbox_time": 1416,
+          "total_seconds": 1668
+        }
+      ],
+      "fastest": {
+        "fastest_route": "alternate",
+        "signals": [
+          "1",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13"
+        ],
+        "total_seconds": 1668,
+        "total_minutes": 27,
+        "total_seconds_only": 1668,
+        "mapbox_time": 1416,
+        "signal_delays": [
+          25,
+          25,
+          117,
+          25,
+          25,
+          25,
+          5,
+          5
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-21T18:26:11.531Z",
+    "user": "emer@gmail.com",
+    "routes": [
+      {
+        "route": "shortest",
+        "signal_count": 7,
+        "signal_serial_numbers": "1;2;3;4;5;6;7",
+        "distance_time": "6.08 km / 21.7 min"
+      },
+      {
+        "route": "alternate",
+        "signal_count": 8,
+        "signal_serial_numbers": "1;7;8;9;10;11;12;13",
+        "distance_time": "7.22 km / 23.6 min"
+      }
+    ],
+    "result": {
+      "routes": [
+        {
+          "route": "shortest",
+          "signals": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+          ],
+          "signal_delays": [
+            25,
+            117,
+            5,
+            182,
+            117,
+            25,
+            25
+          ],
+          "mapbox_time": 1302,
+          "total_seconds": 1798
+        },
+        {
+          "route": "alternate",
+          "signals": [
+            "1",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ],
+          "signal_delays": [
+            25,
+            25,
+            117,
+            25,
+            25,
+            25,
+            5,
+            5
+          ],
+          "mapbox_time": 1416,
+          "total_seconds": 1668
+        }
+      ],
+      "fastest": {
+        "fastest_route": "alternate",
+        "signals": [
+          "1",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13"
+        ],
+        "total_seconds": 1668,
+        "total_minutes": 27,
+        "total_seconds_only": 1668,
+        "mapbox_time": 1416,
+        "signal_delays": [
+          25,
+          25,
+          117,
+          25,
+          25,
+          25,
+          5,
+          5
+        ]
+      }
+    }
+  }
+]

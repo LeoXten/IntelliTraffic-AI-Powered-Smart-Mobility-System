@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1755807093116",
+    "timestamp": "2025-08-21T20:11:33.118Z",
+    "user": "normaluser@gmail.com",
+    "role": "user",
+    "text": "accident in garia",
+    "location": null,
+    "file": null,
+    "fileType": null,
+    "status": "reported"
+  },
+  {
+    "id": "1755807098248",
+    "timestamp": "2025-08-21T20:11:38.248Z",
+    "user": "normaluser@gmail.com",
+    "role": "user",
+    "text": "accident in garia",
+    "location": null,
+    "file": null,
+    "fileType": null,
+    "status": "reported"
+  }
+]

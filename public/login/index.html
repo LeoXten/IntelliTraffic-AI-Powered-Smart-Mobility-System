@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In | IntelliTraffic</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+    }
+    .login-card h2 {
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    .error {
+      color: #e74c3c;
+      margin-top: 0.5rem;
+      min-height: 1.25rem;
+      text-align: center;
+    }
+    .note {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 1.5rem;
+      line-height: 1.5;
+    }
+    .login-footer {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+    .login-footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <img src="/logo.svg" class="logo">
+        <span>IntelliTraffic</span>
+      </div>
+      <div class="navbar-user">
+        <a href="/" class="btn btn-outline">Back to App</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-container">
+    <div class="login-card">
+      <h2>Sign In</h2>
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input id="usernameOrEmail" type="text" placeholder="username or you@example.com" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="••••••" autocomplete="current-password">
+      </div>
+      <button id="loginBtn" class="btn btn-primary" style="width:100%">Sign In</button>
+      <div class="error" id="error"></div>
+      
+      <div class="login-footer">
+        Don't have an account? <a href="/signup/">Sign up here</a>
+      </div>
+      
+      <div class="note">
+        <strong>Default accounts (file-store fallback):</strong><br>
+        user / 123456 (user)<br>
+        user@example.com / 123456 (user)<br>
+        emergency / 123456 (emergency)<br>
+        emergency@example.com / 123456 (emergency)<br>
+        admin / 123456 (admin)<br>
+        admin@example.com / 123456 (admin)
+      </div>
+    </div>
+  </div>
+
+<script>
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const usernameOrEmail = document.getElementById('usernameOrEmail').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const err = document.getElementById('error');
+  err.textContent = '';
+  
+  if (!usernameOrEmail || !password) {
+    err.textContent = 'Please fill in all fields';
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST', 
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ usernameOrEmail, password })
+    });
+    const data = await res.json();
+    
+    if (!data.ok) { 
+      err.textContent = data.error === 'invalid_credentials' 
+        ? 'Invalid credentials. Please try again or sign up.' 
+        : 'Login failed. Please try again.';
+      return;
+    }
+    
+    // Redirect based on role
+    if (data.role === 'admin') { 
+      window.location.href = '/admin'; 
+    } else if (data.role === 'emergency') { 
+      window.location.href = '/emergency'; 
+    } else { 
+      window.location.href = '/'; 
+    }
+  } catch (e) {
+    err.textContent = 'Network error. Please try again.';
+  }
+});
+
+// Allow pressing Enter to submit
+document.getElementById('password').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('loginBtn').click();
+  }
+});
+</script>
+
+</body>
+</html>

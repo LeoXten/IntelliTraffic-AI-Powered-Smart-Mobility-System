@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accident Report</title>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css' rel='stylesheet' />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Updated styles with Mapbox integration */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background: linear-gradient(to bottom right, #e6f0ff, #f9fbfd);
+        }
+        
+        .navbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .navbar-brand img {
+            height: 30px;
+        }
+        
+        .navbar-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .navbar-links a {
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background 0.3s;
+        }
+        
+        .navbar-links a:hover {
+            background: rgba(0,123,255,0.1);
+        }
+        
+        .navbar-links a.active {
+            background: #007BFF;
+            color: white;
+        }
+        
+        .left-panel {
+            width: 38%;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            margin-top: 60px;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #007BFF, #00C6FF);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border-bottom: 4px solid rgba(255,255,255,0.2);
+        }
+        
+        .header span {
+            font-size: 1.8rem;
+        }
+        
+        section {
+            background: #fff;
+            padding: 18px;
+            border-radius: 12px;
+            margin: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        
+        section:hover {
+            transform: translateY(-2px);
+        }
+        
+        section h2 {
+            margin: 0 0 10px;
+            font-size: 1.2rem;
+            color: #007BFF;
+        }
+        
+        textarea, input[type="file"], button {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-top: 6px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        textarea:focus, input[type="file"]:focus {
+            border-color: #007BFF;
+            box-shadow: 0 0 4px rgba(0,123,255,0.5);
+        }
+        
+        textarea {
+            resize: vertical;
+            height: 90px;
+        }
+        
+        button {
+            background: linear-gradient(90deg, #007BFF, #00C6FF);
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 5px;
+            transition: background 0.3s, transform 0.2s;
+        }
+        
+        button:hover {
+            transform: scale(1.02);
+            background: linear-gradient(90deg, #0056b3, #0099cc);
+        }
+        
+        #micBtn {
+            background: red;
+            color: white;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            display: block;
+            margin: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: background 0.3s, transform 0.2s;
+        }
+        
+        #micBtn.recording {
+            background: green;
+            animation: pulse 1.2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.6); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 255, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
+        }
+        
+        #recordStatus {
+            margin-top: 8px;
+            font-style: italic;
+            font-size: 13px;
+            color: #555;
+            text-align: center;
+        }
+        
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        
+        .mapboxgl-ctrl-top-right {
+            top: 70px;
+        }
+        
+        .location-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #007BFF;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .location-marker.current {
+            background-color: #00C6FF;
+        }
+        
+        .location-marker.incident {
+            background-color: #FF4D4D;
+        }
+        
+        .status-indicator {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="../logo.svg" alt="IntelliTraffic Logo">
+            <span>IntelliTraffic | Incident Reporting</span>
+        </div>
+        <div class="navbar-links">
+            <a href="/"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="left-panel">
+        <div class="header">🚨 Accident Report</div>
+
+        <!-- Status Indicator -->
+        <div id="statusIndicator" class="status-indicator"></div>
+
+        <!-- Text Input -->
+        <section>
+            <h2>Text Report</h2>
+            <textarea id="reportText" placeholder="Type or dictate your accident report here"></textarea>
+        </section>
+
+        <!-- Voice Input -->
+        <section>
+            <h2>Voice Report</h2>
+            <button id="micBtn">🎤</button>
+            <p id="recordStatus">Click mic to start speaking</p>
+        </section>
+
+        <!-- Image Input -->
+        <section>
+            <h2>Image Upload</h2>
+            <input type="file" id="fileInput" accept="image/*,audio/*">
+        </section>
+
+        <!-- Location Information -->
+        <section>
+            <h2>Location Details</h2>
+            <div id="locationInfo">Acquiring your location...</div>
+            <button id="updateLocationBtn" style="display: none;">
+                <i class="fas fa-sync-alt"></i> Update Location
+            </button>
+        </section>
+
+        <!-- Submit -->
+        <section>
+            <button id="submitBtn">Submit Report</button>
+        </section>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibGlvbmVsLTEwIiwiYSI6ImNtY202YnNrNzBqMXcyanM5MmJxcGd3eTcifQ.nRr1tRDNvPFgeTMgfO_H4Q';
+        
+        let recognition;
+        let latitude, longitude;
+        let currentMarker, incidentMarker;
+        let map;
+        let isLocationSet = false;
+
+        // Initialize map
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v11',
+                center: [78.9629, 20.5937], // India coordinates
+                zoom: 4
+            });
+
+            // Add navigation control
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+            // Get GPS location and add blue marker
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        latitude = pos.coords.latitude;
+                        longitude = pos.coords.longitude;
+                        updateCurrentLocation(latitude, longitude);
+                        updateLocationInfo();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        document.getElementById('locationInfo').textContent = 
+                            'Unable to get your location. Please enable location services.';
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                );
+            } else {
+                document.getElementById('locationInfo').textContent = 
+                    'Geolocation is not supported by this browser.';
+            }
+
+            // Add click event to set incident location
+            map.on('click', (e) => {
+                latitude = e.lngLat.lat;
+                longitude = e.lngLat.lng;
+                setIncidentLocation(latitude, longitude);
+                updateLocationInfo();
+            });
+        }
+
+        function updateCurrentLocation(lat, lng) {
+            if (currentMarker) currentMarker.remove();
+            
+            const el = document.createElement('div');
+            el.className = 'location-marker current';
+            
+            currentMarker = new mapboxgl.Marker(el)
+                .setLngLat([lng, lat])
+                .setPopup(new mapboxgl.Popup().setHTML('<h3>Your Current Location</h3>'))
+                .addTo(map);
+                
+            if (!isLocationSet) {
+                map.flyTo({
+                    center: [lng, lat],
+                    zoom: 15,
+                    essential: true
+                });
+            }
+        }
+
+        function setIncidentLocation(lat, lng) {
+            if (incidentMarker) incidentMarker.remove();
+            
+            const el = document.createElement('div');
+            el.className = 'location-marker incident';
+            
+            incidentMarker = new mapboxgl.Marker(el)
+                .setLngLat([lng, lat])
+                .setPopup(new mapboxgl.Popup().setHTML('<h3>Incident Location</h3>'))
+                .addTo(map);
+                
+            isLocationSet = true;
+            
+            // Fly to the incident location
+            map.flyTo({
+                center: [lng, lat],
+                zoom: 15,
+                essential: true
+            });
+        }
+
+        function updateLocationInfo() {
+            const locationInfo = document.getElementById('locationInfo');
+            if (latitude && longitude) {
+                locationInfo.innerHTML = `
+                    <strong>Location Set:</strong><br>
+                    Latitude: ${latitude.toFixed(6)}<br>
+                    Longitude: ${longitude.toFixed(6)}
+                `;
+                document.getElementById('updateLocationBtn').style.display = 'block';
+            }
+        }
+
+        function showStatus(message, type) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = message;
+            indicator.className = `status-indicator status-${type}`;
+            indicator.style.display = 'block';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 5000);
+        }
+
+        // Voice Recognition
+        const micBtn = document.getElementById("micBtn");
+        const statusEl = document.getElementById("recordStatus");
+        const reportText = document.getElementById("reportText");
+
+        if ("webkitSpeechRecognition" in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.continuous = false;
+
+            recognition.onstart = () => {
+                micBtn.classList.add("recording");
+                statusEl.innerText = "Listening... speak now.";
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                reportText.value = transcript;
+                console.log("🎤 Recognized:", transcript);
+
+                // Try to extract location from speech
+                const placeMatch = transcript.match(/in\s+([A-Za-z\s]+)/i);
+                if (placeMatch && placeMatch[1]) {
+                    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(placeMatch[1])}.json?access_token=${mapboxgl.accessToken}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.features && data.features.length > 0) {
+                                const [lng, lat] = data.features[0].center;
+                                setIncidentLocation(lat, lng);
+                                updateLocationInfo();
+                            }
+                        });
+                }
+            };
+
+            recognition.onerror = () => {
+                statusEl.innerText = "Error, try again.";
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove("recording");
+                statusEl.innerText = "Click mic to start speaking";
+            };
+
+            micBtn.addEventListener("click", () => recognition.start());
+        } else {
+            statusEl.innerText = "Speech recognition not supported.";
+            micBtn.disabled = true;
+        }
+
+        // Text location detection
+        reportText.addEventListener("blur", () => {
+            const text = reportText.value;
+            const placeMatch = text.match(/in\s+([A-Za-z\s]+)/i);
+            if (placeMatch && placeMatch[1]) {
+                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(placeMatch[1])}.json?access_token=${mapboxgl.accessToken}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.features && data.features.length > 0) {
+                            const [lng, lat] = data.features[0].center;
+                            setIncidentLocation(lat, lng);
+                            updateLocationInfo();
+                        }
+                    });
+            }
+        });
+
+        // Update location button
+        document.getElementById('updateLocationBtn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        latitude = pos.coords.latitude;
+                        longitude = pos.coords.longitude;
+                        updateCurrentLocation(latitude, longitude);
+                        setIncidentLocation(latitude, longitude);
+                        updateLocationInfo();
+                        showStatus('Location updated successfully!', 'success');
+                    },
+                    (error) => {
+                        showStatus('Failed to update location', 'error');
+                    }
+                );
+            }
+        });
+
+        // Submit
+        document.getElementById("submitBtn").addEventListener("click", async () => {
+            const formData = new FormData();
+            const file = document.getElementById("fileInput").files[0];
+            const text = reportText.value;
+
+            if (!text && !file) {
+                showStatus('Please provide either text description or file', 'error');
+                return;
+            }
+
+            if (!latitude || !longitude) {
+                showStatus('Please set a location for the incident', 'error');
+                return;
+            }
+
+            if (file) formData.append("file", file);
+            if (text) formData.append("text", text);
+            formData.append("location", `${latitude},${longitude}`);
+
+            showStatus('Submitting report...', 'info');
+
+            try {
+                const res = await fetch("/api/incident/report", { method: "POST", body: formData });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showStatus(data.status, 'success');
+                    
+                    // Clear form
+                    reportText.value = "";
+                    document.getElementById("fileInput").value = "";
+                    
+                    if (data.status.includes("Alert sent")) {
+                        showStatus('Alert has been sent to authorities', 'success');
+                    }
+                } else {
+                    showStatus('Error: ' + (data.error || 'Could not send report'), 'error');
+                }
+            } catch (err) {
+                showStatus("Error: Could not send report", 'error');
+            }
+        });
+
+        // Initialize map when page loads
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>

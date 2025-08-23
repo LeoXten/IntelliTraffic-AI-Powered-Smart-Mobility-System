@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>IntelliTraffic | Emergency Route Planner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Emergency vehicle route planning with traffic signal prioritization">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        
+        .notification-bell:hover {
+            background: #f0f0f0;
+        }
+        
+        /* Enhanced notification styles */
+        .notification-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            transition: all 0.3s ease;
+        }
+        
+        .notification-item:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .notification-item.active {
+            border-left-color: #e74c3c;
+        }
+        
+        .notification-item.cleared {
+            border-left-color: #2ecc71;
+        }
+        
+        .notification-icon {
+            margin-right: 12px;
+            font-size: 18px;
+            color: #3498db;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .notification-item.active .notification-icon {
+            color: #e74c3c;
+        }
+        
+        .notification-item.cleared .notification-icon {
+            color: #2ecc71;
+        }
+        
+        .notification-content {
+            flex: 1;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .notification-time {
+            font-size: 0.8rem;
+            color: #95a5a6;
+        }
+        
+        .notification-details {
+            display: flex;
+            align-items: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .notification-details i {
+            margin-right: 5px;
+        }
+        
+        .notification-status {
+            margin-left: 10px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .badge-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .modal-header {
+            background: #e74c3c;
+            color: white;
+            padding: 15px 20px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .emergency-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="../logo.svg" alt="IntelliTraffic Logo" class="logo">
+                <span>IntelliTraffic <small class="badge emergency-badge">EMERGENCY</small></span>
+            </div>
+            <div class="navbar-links">
+                <a href="#" class="active"><i class="fas fa-route"></i> Route Planner</a>
+                <a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident Report</a>
+                <a href="#" id="historyBtn"><i class="fas fa-history"></i> History</a>
+                <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                <a href="#"><i class="fas fa-question-circle"></i> Help</a>
+            </div>
+            <div class="navbar-user">
+                <div class="notification-bell" id="notificationsBtn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notification-count">0</span>
+                </div>
+                <button id="authBtn" class="btn btn-outline"><i class="fas fa-user"></i> Sign In</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Left Panel - Route Planner -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-map-marked-alt"></i> Emergency Route Planner</h2>
+                <button id="fullscreenBtn" class="btn-icon" title="Fullscreen Map">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+            
+            <div class="form-container">
+                <div class="form-group">
+                    <label for="start"><i class="fas fa-map-marker-alt"></i> Emergency Start Location</label>
+                    <input type="text" id="start" placeholder="e.g. Hospital or 22.5726°N 88.3639°E" />
+                </div>
+                <div class="form-group">
+                    <label for="end"><i class="fas fa-flag-checkered"></i> Emergency Destination</label>
+                    <input type="text" id="end" placeholder="e.g. Incident Location or 22.5726°N 88.3639°E" />
+                </div>
+                <div class="form-group">
+                    <label for="mode"><i class="fas fa-ambulance"></i> Emergency Vehicle Type</label>
+                    <select id="mode">
+                        <option value="driving">🚑 Ambulance</option>
+                        <option value="motorcycling">🚒 Fire Truck</option>
+                        <option value="walking">🚓 Police Vehicle</option>
+                    </select>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="button" id="findRouteBtn" class="btn btn-primary">
+                        <i class="fas fa-bolt"></i> Find Priority Route
+                    </button>
+                    <button type="button" id="findShortestRouteBtn" class="btn btn-secondary">
+                        <i class="fas fa-ruler"></i> Find Shortest Route
+                    </button>
+                </div>
+                
+                <div id="processing" class="processing-info">
+                    <i class="fas fa-spinner fa-spin"></i> <span>Ready to plan emergency route</span>
+                </div>
+                
+                <div class="info-tip emergency-tip">
+                    <div><i class="fas fa-exclamation-triangle"></i> <strong>Priority Route</strong> signals other vehicles to give way</div>
+                    <div><i class="fas fa-info-circle"></i> <strong>Shortest Route</strong> uses only distance without signal priority</div>
+                </div>
+                
+                <div id="route-options" class="route-options-container">
+                    <div class="section-title">
+                        <i class="fas fa-route"></i> Route Options
+                        <span class="badge">3 max</span>
+                    </div>
+                    <div class="empty-state">Routes will appear here after calculation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div id="map" class="map-container"></div>
+
+        <!-- Right Panel - Route Information -->
+        <div class="right-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-info-circle"></i> Route Information</h2>
+            </div>
+            
+            <div class="info-card">
+                <div id="route-summary">
+                    <div class="empty-state">
+                        <i class="fas fa-directions"></i>
+                        <p>No route loaded. Enter emergency locations to begin.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-container">
+                <div class="section-title">
+                    <i class="fas fa-list-ol"></i> Directions
+                </div>
+                <div id="directions" class="scroll-container">
+                    <div class="empty-state">
+                        <i class="fas fa-arrow-right"></i>
+                        <p>Turn-by-turn directions will appear here</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-container">
+                <div class="section-title">
+                    <i class="fas fa-traffic-light"></i> Traffic Signals
+                    <span id="signal-count" class="badge">0</span>
+                </div>
+                <div id="signal-list" class="scroll-container">
+                    <div class="empty-state">
+                        <i class="fas fa-lightbulb"></i>
+                        <p>Traffic signals along route will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-history"></i> Emergency Route History</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="history-list" class="scroll-container">
+                    <div class="empty-state">
+                        <i class="fas fa-history"></i>
+                        <p>No emergency routes in history</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="notifications-list" class="scroll-container">
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>No notifications</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibGlvbmVsLTEwIiwiYSI6ImNtY202YnNrNzBqMXcyanM5MmJxcGd3eTcifQ.nRr1tRDNvPFgeTMgfO_H4Q';
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [88.3639, 22.5726],
+            zoom: 11
+        });
+
+        let signalData = [];
+        let routeLayerId = "selected-route";
+        let signalMarkers = [];
+        let startMarker = null;
+        let endMarker = null;
+        let signalsLoaded = false;
+        let lastRoutes = [];
+        let currentRouteType = null;
+        let currentRouteIndex = 0;
+        let backendRouteData = null;
+        let startCoord = null;
+        let endCoord = null;
+        let alerts = [];
+        let socket = null;
+
+        // --- Helpers ---
+        function dmsToDecimal(dmsStr) {
+            if (dmsStr.includes(" ")) {
+                const parts = dmsStr.split(" ");
+                if (parts.length === 2) {
+                    const lat = dmsToDecimal(parts[0]);
+                    const lon = dmsToDecimal(parts[1]);
+                    if (lat !== null && lon !== null) {
+                        return [lon, lat];
+                    }
+                }
+                return null;
+            }
+            const regex = /(\d+)°(\d+)'([\d.]+)"([NSEW])/i;
+            const parts = dmsStr.match(regex);
+            if (!parts) return null;
+            let deg = parseFloat(parts[1]);
+            let min = parseFloat(parts[2]);
+            let sec = parseFloat(parts[3]);
+            let dir = parts[4].toUpperCase();
+            let decimal = deg + min / 60 + sec / 3600;
+            if (dir === 'S' || dir === 'W') decimal *= -1;
+            return decimal;
+        }
+
+        async function loadSignalCSV() {
+            try {
+                const response = await fetch('../signal.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                lines.slice(1).forEach(line => {
+                    const parts = line.split(',');
+                    if (parts.length < 4) return;
+                    const slNo = parts[0].trim();
+                    const name = parts[1].trim();
+                    const latDMS = parts[2].trim();
+                    const lonDMS = parts[3].trim();
+                    const lat = dmsToDecimal(latDMS);
+                    const lon = dmsToDecimal(lonDMS);
+                    if (lat !== null && lon !== null) {
+                        signalData.push({ slNo, name, coordinates: [lon, lat] });
+                    }
+                });
+                signalsLoaded = true;
+            } catch (err) {
+                console.error("Failed to load signal.csv:", err);
+            }
+        }
+
+        async function geocode(place) {
+            const dmsCoords = dmsToDecimal(place);
+            if (dmsCoords && Array.isArray(dmsCoords)) {
+                return dmsCoords;
+            }
+            const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?access_token=${mapboxgl.accessToken}`);
+            const data = await res.json();
+            return data.features[0]?.geometry.coordinates || null;
+        }
+
+        async function getRoutes(startCoord, endCoord, mode) {
+            let apiMode = mode === "motorcycling" ? "driving" : mode;
+            const query = await fetch(`https://api.mapbox.com/directions/v5/mapbox/${apiMode}/${startCoord.join(',')};${endCoord.join(',')}?geometries=geojson&alternatives=true&steps=true&access_token=${mapboxgl.accessToken}`);
+            const json = await query.json();
+            if (!json.routes || json.routes.length === 0) return [];
+
+            return json.routes.map((r, idx) => ({
+                index: idx + 1,
+                coordinates: r.geometry.coordinates,
+                distanceKm: (r.distance / 1000).toFixed(2),
+                durationMin: (r.duration / 60).toFixed(1),
+                steps: r.legs[0].steps
+            })).sort((a, b) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm)).slice(0, 3);
+        }
+
+        function findSignalsForRoute(routeCoords) {
+            if (routeCoords.length < 2) return [];
+            const routeLine = turf.lineString(routeCoords);
+            const buffer = turf.buffer(routeLine, 0.05, { units: 'kilometers' });
+
+            return signalData.filter(sig => {
+                const point = turf.point(sig.coordinates);
+                if (!turb.booleanPointInPolygon(point, buffer)) return false;
+                for (let i = 0; i < routeCoords.length - 1; i++) {
+                    const segment = turf.lineString([routeCoords[i], routeCoords[i+1]]);
+                    const distance = turf.pointToLineDistance(point, segment, { units: 'kilometers' });
+                    if (distance <= 0.05) return true;
+                }
+                return false;
+            });
+        }
+
+        function flyToPoint(coords) {
+            map.flyTo({ center: coords, zoom: 16 });
+            const tempMarker = new mapboxgl.Marker({ color: 'yellow', scale: 1.2 })
+                .setLngLat(coords)
+                .addTo(map);
+            setTimeout(() => {
+                tempMarker.remove();
+                if (startMarker) startMarker.addTo(map);
+                if (endMarker) endMarker.addTo(map);
+                signalMarkers.forEach(m => m.addTo(map));
+            }, 1500);
+        }
+
+        async function sendRouteData(routeData) {
+            try {
+                const resp = await fetch('/saveRouteSignals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(routeData)
+                });
+                return await resp.json();
+            } catch (err) {
+                console.error("Error sending route data to backend:", err);
+                return { success: false, error: String(err) };
+            }
+        }
+
+        function renderRouteOptions(routes, serverResp) {
+            const container = document.getElementById('route-options');
+            container.innerHTML = '<div class="section-title"><i class="fas fa-route"></i> Route Options <span class="badge">'+routes.length+'</span></div>';
+            
+            if (!routes.length) {
+                container.innerHTML += '<div class="empty-state">No routes found</div>';
+                return;
+            }
+
+            // Find the route with minimum time (for highlighting)
+            let minTimeRouteIndex = 0;
+            let minTime = Infinity;
+            if (currentRouteType === 'optimal' && serverResp?.result?.routes) {
+                serverResp.result.routes.forEach((route, index) => {
+                    if (route.total_seconds < minTime) {
+                        minTime = route.total_seconds;
+                        minTimeRouteIndex = index;
+                    }
+                });
+            } else {
+                // For shortest route, just use the first one (already sorted by distance)
+                minTimeRouteIndex = 0;
+            }
+
+            routes.forEach((route, idx) => {
+                const div = document.createElement('div');
+                const isSelected = idx === currentRouteIndex;
+                const isOptimal = idx === minTimeRouteIndex;
+                
+                div.className = `route-option ${isSelected ? 'selected' : ''} ${isOptimal ? 'optimal' : ''}`;
+                
+                const label = idx === 0 ? "shortest" : (idx === 1 ? "alternate" : "longest");
+                const backendData = serverResp?.result?.routes?.find(r => r.route === label);
+                
+                let timeText, timeValue;
+                if (currentRouteType === 'optimal' && backendData) {
+                    const totalSec = backendData.total_seconds;
+                    const mins = Math.floor(totalSec / 60);
+                    const secs = Math.round(totalSec % 60);
+                    timeText = `${mins} min ${secs} sec (with priority)`;
+                    timeValue = (totalSec / 60).toFixed(1);
+                } else {
+                    timeText = `${route.durationMin} min (distance only)`;
+                    timeValue = route.durationMin;
+                }
+                
+                div.innerHTML = `
+                    <div class="route-header">
+                        <span class="route-number">Option ${idx + 1}</span>
+                        ${isOptimal ? '<span class="badge optimal-badge"><i class="fas fa-crown"></i> Priority Route</span>' : ''}
+                    </div>
+                    <div class="route-stats">
+                        <span><i class="fas fa-ruler"></i> ${route.distanceKm} km</span>
+                        <span><i class="fas fa-clock"></i> ${timeText}</span>
+                    </div>
+                    <div class="route-signals">
+                        <i class="fas fa-traffic-light"></i> ${findSignalsForRoute(route.coordinates).length} signals
+                    </div>
+                `;
+                
+                div.onclick = () => {
+                    currentRouteIndex = idx;
+                    renderRouteOptions(routes, serverResp);
+                    
+                    const signals = findSignalsForRoute(route.coordinates);
+                    displayRouteOnMap(
+                        route,
+                        signals,
+                        startCoord,
+                        endCoord,
+                        {
+                            overrideMinutes: currentRouteType === 'optimal' && backendData ? (backendData.total_seconds / 60).toFixed(1) : null,
+                            label: idx === minTimeRouteIndex ? "Priority" : (currentRouteType === 'optimal' ? "With Signals" : "Shortest"),
+                            isOptimal: idx === minTimeRouteIndex
+                        }
+                    );
+                };
+                
+                container.appendChild(div);
+            });
+
+            // Automatically select and display the optimal route if none is selected
+            if (currentRouteIndex === null && routes.length > 0) {
+                currentRouteIndex = minTimeRouteIndex;
+                const signals = findSignalsForRoute(routes[minTimeRouteIndex].coordinates);
+                displayRouteOnMap(
+                    routes[minTimeRouteIndex],
+                    signals,
+                    startCoord,
+                    endCoord,
+                    {
+                        overrideMinutes: currentRouteType === 'optimal' && serverResp?.result?.routes?.[minTimeRouteIndex] ? 
+                            (serverResp.result.routes[minTimeRouteIndex].total_seconds / 60).toFixed(1) : null,
+                        label: "Priority",
+                        isOptimal: true
+                    }
+                );
+            }
+        }
+
+        // ---------- MAIN BUTTONS ----------
+        async function getOptimalRoute() {
+            const startPlace = document.getElementById('start').value.trim();
+            const endPlace = document.getElementById('end').value.trim();
+            const mode = document.getElementById('mode').value;
+            if (!startPlace || !endPlace) {
+                alert("Please enter both emergency start and destination locations");
+                return;
+            }
+
+            currentRouteType = 'optimal';
+            const processingEl = document.getElementById('processing');
+            processingEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Geocoding and fetching routes...</span>';
+            
+            startCoord = await geocode(startPlace);
+            endCoord = await geocode(endPlace);
+            if (!startCoord || !endCoord) {
+                alert("Could not geocode one or both emergency locations");
+                processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Ready to plan emergency route</span>';
+                return;
+            }
+
+            processingEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Fetching alternative routes...</span>';
+            const routes = await getRoutes(startCoord, endCoord, mode);
+            if (routes.length === 0) {
+                alert("No routes found for emergency vehicle.");
+                processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Ready to plan emergency route</span>';
+                return;
+            }
+
+            lastRoutes = routes;
+
+            // Build payload for backend
+            let backendData = [];
+            routes.forEach((r, i) => {
+                const signals = findSignalsForRoute(r.coordinates);
+                const label = i === 0 ? "shortest" : (i === 1 ? "alternate" : "longest");
+                backendData.push({
+                    route: label,
+                    signal_count: signals.length,
+                    signal_serial_numbers: signals.map(s => s.slNo).join(';'),
+                    distance_time: `${r.distanceKm} km / ${r.durationMin} min`
+                });
+            });
+
+            processingEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Computing priority route (distance + signals)...</span>';
+            const serverResp = await sendRouteData(backendData);
+            backendRouteData = serverResp;
+
+            if (!serverResp || serverResp.success === false) {
+                console.error("Server processing failed:", serverResp);
+                alert("Server processing failed. See console.");
+                processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Ready to plan emergency route</span>';
+                return;
+            }
+
+            // Find the route with minimum total time
+            let minTimeRouteIndex = 0;
+            let minTime = Infinity;
+            if (serverResp.result?.routes) {
+                serverResp.result.routes.forEach((route, index) => {
+                    if (route.total_seconds < minTime) {
+                        minTime = route.total_seconds;
+                        minTimeRouteIndex = index;
+                    }
+                });
+            }
+            currentRouteIndex = minTimeRouteIndex;
+
+            renderRouteOptions(routes, serverResp);
+            processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Route calculation complete</span>';
+
+            // Display the route with minimum total time
+            const optimalRoute = routes[minTimeRouteIndex];
+            const optimalSignals = findSignalsForRoute(optimalRoute.coordinates);
+            const optimalTime = serverResp.result.routes[minTimeRouteIndex].total_seconds / 60;
+
+            displayRouteOnMap(
+                optimalRoute,
+                optimalSignals,
+                startCoord,
+                endCoord,
+                {
+                    overrideMinutes: optimalTime.toFixed(1),
+                    label: "Priority",
+                    isOptimal: true
+                }
+            );
+        }
+
+        async function getShortestRoute() {
+            const startPlace = document.getElementById('start').value.trim();
+            const endPlace = document.getElementById('end').value.trim();
+            const mode = document.getElementById('mode').value;
+            if (!startPlace || !endPlace) {
+                alert("Please enter both emergency start and destination locations");
+                return;
+            }
+
+            currentRouteType = 'shortest';
+            const processingEl = document.getElementById('processing');
+            processingEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Geocoding and fetching routes...</span>';
+            
+            startCoord = await geocode(startPlace);
+            endCoord = await geocode(endPlace);
+            if (!startCoord || !endCoord) {
+                alert("Could not geocode one or both emergency locations");
+                processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Ready to plan emergency route</span>';
+                return;
+            }
+
+            processingEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Finding shortest (by distance) route...</span>';
+            const routes = await getRoutes(startCoord, endCoord, mode);
+            if (routes.length === 0) {
+                alert("No routes found for emergency vehicle.");
+                processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Ready to plan emergency route</span>';
+                return;
+            }
+
+            lastRoutes = routes;
+            currentRouteIndex = 0;
+            backendRouteData = null;
+
+            renderRouteOptions(routes);
+            processingEl.innerHTML = '<i class="fas fa-check"></i> <span>Route calculation complete</span>';
+
+            const shortestRoute = routes[0];
+            const signals = findSignalsForRoute(shortestRoute.coordinates);
+            
+            displayRouteOnMap(
+                shortestRoute,
+                signals,
+                startCoord,
+                endCoord,
+                {
+                    overrideMinutes: null,
+                    label: "Shortest",
+                    isOptimal: false
+                }
+            );
+        }
+
+        // ---------- MAP RENDER ----------
+        function displayRouteOnMap(routeObj, signalsArr, startCoord, endCoord, opts = {}) {
+            const { overrideMinutes = null, label = null, isOptimal = false } = opts;
+
+            // Remove old route and markers
+            if (map.getLayer(routeLayerId)) map.removeLayer(routeLayerId);
+            if (map.getSource(routeLayerId)) map.removeSource(routeLayerId);
+            if (startMarker) startMarker.remove();
+            if (endMarker) endMarker.remove();
+            signalMarkers.forEach(m => m.remove());
+            signalMarkers = [];
+
+            // Add route
+            map.addSource(routeLayerId, {
+                type: 'geojson',
+                data: { type: 'Feature', geometry: { type: 'LineString', coordinates: routeObj.coordinates } }
+            });
+            map.addLayer({
+                id: routeLayerId,
+                type: 'line',
+                source: routeLayerId,
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 
+                    'line-color': isOptimal ? '#00b894' : '#0984e3',
+                    'line-width': 6 
+                }
+            });
+
+            // Add markers
+            startMarker = new mapboxgl.Marker({ color: '#00b894', scale: 1.2 })
+                .setLngLat(startCoord)
+                .setPopup(new mapboxgl.Popup().setText('Emergency Start Point'))
+                .addTo(map);
+
+            endMarker = new mapboxgl.Marker({ color: '#ff4757', scale: 1.2 })
+                .setLngLat(endCoord)
+                .setPopup(new mapboxgl.Popup().setText('Emergency Destination'))
+                .addTo(map);
+
+            // Add traffic signals
+            signalsArr.forEach(sig => {
+                const el = document.createElement('div');
+                el.className = 'signal-marker';
+                el.innerHTML = '🚦';
+                el.style.fontSize = '24px';
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat(sig.coordinates)
+                    .setPopup(new mapboxgl.Popup().setText(sig.name))
+                    .addTo(map);
+                signalMarkers.push(marker);
+            });
+
+            // Update UI
+            const etaToShow = overrideMinutes ?? routeObj.durationMin;
+            const etaLabel = isOptimal ? 
+                `${etaToShow} min <span class="badge optimal-badge"><i class="fas fa-crown"></i> Priority Route</span>` : 
+                `${etaToShow} min ${label ? `<span class="badge">${label}</span>` : ''}`;
+
+            document.getElementById('route-summary').innerHTML = `
+                <div class="info-row">
+                    <span><i class="fas fa-ruler"></i> Distance</span>
+                    <span>${routeObj.distanceKm} km</span>
+                </div>
+                <div class="info-row">
+                    <span><i class="fas fa-clock"></i> Estimated Time</span>
+                    <span>${etaLabel}</span>
+                </div>
+                <div class="info-row">
+                    <span><i class="fas fa-traffic-light"></i> Traffic Signals</span>
+                    <span>${signalsArr.length}</span>
+                </div>
+            `;
+
+            // Update directions
+            const dirContainer = document.getElementById('directions');
+            dirContainer.innerHTML = '';
+            if (routeObj.steps && routeObj.steps.length) {
+                routeObj.steps.forEach((step, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'step';
+                    div.innerHTML = `
+                        <div class="step-number">${idx + 1}</div>
+                        <div class="step-content">
+                            <div class="step-instruction">${step.maneuver.instruction}</div>
+                            <div class="step-distance">${(step.distance/1000).toFixed(2)} km</div>
+                        </div>
+                    `;
+                    div.onclick = () => flyToPoint(step.maneuver.location);
+                    dirContainer.appendChild(div);
+                });
+            } else {
+                dirContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-arrow-right"></i>
+                        <p>No directions available</p>
+                    </div>
+                `;
+            }
+
+            // Update signals
+            const sigContainer = document.getElementById('signal-list');
+            sigContainer.innerHTML = '';
+            document.getElementById('signal-count').textContent = signalsArr.length;
+            
+            if (signalsArr.length === 0) {
+                sigContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-lightbulb"></i>
+                        <p>No traffic signals along this route</p>
+                    </div>
+                `;
+            } else {
+                signalsArr.forEach(sig => {
+                    const div = document.createElement('div');
+                    div.className = 'signal';
+                    div.innerHTML = `
+                        <div class="signal-icon">🚦</div>
+                        <div class="signal-name">${sig.name}</div>
+                        <div class="signal-id">#${sig.slNo}</div>
+                    `;
+                    div.onclick = () => flyToPoint(sig.coordinates);
+                    sigContainer.appendChild(div);
+                });
+            }
+
+            // Fit bounds
+            try {
+                map.fitBounds(turf.bbox(turf.lineString(routeObj.coordinates)), { padding: 50 });
+            } catch (e) {
+                console.warn("fitBounds failed:", e);
+            }
+        }
+
+        // Fullscreen toggle
+        function toggleFullscreen() {
+            const mapContainer = document.getElementById('map');
+            if (!document.fullscreenElement) {
+                mapContainer.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            console.log('Connecting to WebSocket server at:', wsUrl);
+            
+            try {
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = () => {
+                    console.log('Connected to WebSocket server');
+                };
+                
+                socket.onclose = (event) => {
+                    console.log('WebSocket connection closed:', event.code, event.reason);
+                    
+                    // Try to reconnect after 5 seconds
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                socket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'new_alert') {
+                            // New alert received
+                            loadAlerts();
+                            showAlertNotification(data.data);
+                        } else if (data.type === 'alert_cleared') {
+                            // Alert cleared
+                            loadAlerts();
+                            showAlertClearedNotification(data.data);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error, event.data);
+                    }
+                };
+            } catch (error) {
+                console.error('Error creating WebSocket:', error);
+                
+                // Try to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            }
+        }
+
+        // Load alerts from server
+        async function loadAlerts() {
+            try {
+                const res = await fetch('/api/notifications');
+                const data = await res.json();
+                
+                if (data.ok) {
+                    alerts = data.notifications;
+                    updateNotificationCount();
+                } else {
+                    console.error('Failed to load alerts:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+
+        // Update notification count
+        function updateNotificationCount() {
+            const countElement = document.getElementById('notification-count');
+            if (countElement) {
+                // Count only active alerts
+                const activeCount = alerts.filter(alert => alert.status === 'active').length;
+                countElement.textContent = activeCount;
+            }
+        }
+
+        // Show alert notification
+        function showAlertNotification(alert) {
+            // Show browser notification if available
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('New Alert', {
+                    body: `${alert.type} at ${alert.address || alert.location}`,
+                    icon: '/logo.svg'
+                });
+            }
+            
+            // Also show in-page notification
+            alert(`🚨 New Alert: ${alert.type} at ${alert.address || alert.location}`);
+        }
+
+        // Show alert cleared notification
+        function showAlertClearedNotification(alert) {
+            // Show browser notification if available
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Alert Cleared', {
+                    body: `${alert.type} at ${alert.address || alert.location} has been cleared`,
+                    icon: '/logo.svg'
+                });
+            }
+            
+            // Also show in-page notification
+            alert(`✅ Alert Cleared: ${alert.type} at ${alert.address || alert.location}`);
+        }
+
+        // Show notifications modal
+        function showNotificationsModal() {
+            const modal = document.getElementById('notificationsModal');
+            const list = document.getElementById('notifications-list');
+            
+            if (alerts.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>No notifications</p>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = '';
+                
+                alerts.forEach(alert => {
+                    const alertItem = document.createElement('div');
+                    alertItem.className = `notification-item ${alert.status}`;
+                    
+                    const date = new Date(alert.timestamp).toLocaleString();
+                    const statusClass = alert.status === 'active' ? 'badge-warning' : 'badge-success';
+                    const statusText = alert.status === 'active' ? 'Active' : 'Cleared';
+                    const icon = alert.status === 'active' ? 'fa-exclamation-triangle' : 'fa-check-circle';
+                    
+                    alertItem.innerHTML = `
+                        <div class="notification-icon">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-header">
+                                <div class="notification-title">${alert.type} Alert</div>
+                                <div class="notification-time">${date}</div>
+                            </div>
+                            <div class="notification-details">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>${alert.address || alert.location}</span>
+                            </div>
+                        </div>
+                        <span class="notification-status ${statusClass}">${statusText}</span>
+                    `;
+                    
+                    list.appendChild(alertItem);
+                });
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        // Close modal functions
+        function closeHistoryModal() {
+            document.getElementById('historyModal').style.display = 'none';
+        }
+
+        function closeNotificationsModal() {
+            document.getElementById('notificationsModal').style.display = 'none';
+        }
+
+        // Modal functions
+        function openHistoryModal() {
+            document.getElementById('historyModal').style.display = 'block';
+            loadEmergencyHistory();
+        }
+
+        async function loadEmergencyHistory() {
+            try {
+                const res = await fetch('/api/emergency/routes');
+                const data = await res.json();
+                
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = '';
+                
+                if (!data.ok || !data.routes || data.routes.length === 0) {
+                    historyList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <p>No emergency routes in history</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                data.routes.forEach(route => {
+                    const routeItem = document.createElement('div');
+                    routeItem.className = 'history-item';
+                    
+                    const date = new Date(route.timestamp).toLocaleString();
+                    const user = route.user || 'Unknown';
+                    const routesCount = route.routes ? route.routes.length : 0;
+                    
+                    routeItem.innerHTML = `
+                        <div class="history-header">
+                            <span class="history-date">${date}</span>
+                            <span class="history-user">${user}</span>
+                        </div>
+                        <div class="history-details">
+                            <span>${routesCount} route options calculated</span>
+                        </div>
+                    `;
+                    
+                    historyList.appendChild(routeItem);
+                });
+            } catch (error) {
+                console.error('Error loading emergency history:', error);
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error loading history</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize
+        map.on('load', async () => {
+            await loadSignalCSV();
+        });
+
+        document.getElementById('findRouteBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            getOptimalRoute();
+        });
+
+        document.getElementById('findShortestRouteBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            getShortestRoute();
+        });
+
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
+        document.getElementById('notificationsBtn').addEventListener('click', showNotificationsModal);
+        
+        // Close modals when clicking on X
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', () => {
+                closeHistoryModal();
+                closeNotificationsModal();
+            });
+        });
+        
+        // Close modals when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('historyModal')) {
+                closeHistoryModal();
+            }
+            if (e.target === document.getElementById('notificationsModal')) {
+                closeNotificationsModal();
+            }
+        });
+
+        // Request notification permission
+        if ('Notification' in window) {
+            Notification.requestPermission();
+        }
+
+        // Connect to WebSocket and load alerts
+        connectWebSocket();
+        loadAlerts();
+    </script>
+    <script>
+    (async function(){
+      const authBtn = document.getElementById('authBtn');
+      async function setAuthUI(){
+        try{
+          const res = await fetch('/api/auth/me');
+          const data = await res.json();
+          if(data.auth){
+            // Emergency users stay on the emergency page
+            // Redirect admin users to admin page
+            if(data.user.role === 'admin'){ 
+              window.location.href = '/admin'; 
+              return; 
+            }
+            
+            // Show Logout for authenticated emergency users
+            if (authBtn){
+              authBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Log Out';
+              authBtn.onclick = async () => {
+                await fetch('/api/auth/logout', {method:'POST'});
+                window.location.href = '/';
+              };
+            }
+          } else {
+            // Not logged in
+            if (authBtn){
+              authBtn.innerHTML = '<i class="fas fa-user"></i> Sign In';
+              authBtn.onclick = () => { window.location.href = '/login/'; };
+            }
+          }
+        }catch(e){
+          if (authBtn){
+            authBtn.innerHTML = '<i class="fas fa-user"></i> Sign In';
+            authBtn.onclick = () => { window.location.href = '/login/'; };
+          }
+        }
+      }
+      setAuthUI();
+    })();
+    </script>
+
+</body>
+</html>

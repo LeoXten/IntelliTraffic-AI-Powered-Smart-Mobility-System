@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliTraffic - Admin Dashboard</title>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        /* Admin-specific styles */
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .sidebar-header h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.5rem;
+        }
+
+        .sidebar-header p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            flex: 1;
+        }
+
+        .sidebar-menu li {
+            padding: 0;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 15px 20px;
+            color: white;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu li.active a {
+            background: #34495e;
+        }
+
+        .sidebar-menu i {
+            width: 20px;
+            margin-right: 10px;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid #34495e;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-profile img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .user-profile div {
+            line-height: 1.3;
+        }
+
+        .user-profile span {
+            font-weight: 600;
+            display: block;
+        }
+
+        .user-profile small {
+            opacity: 0.8;
+            font-size: 0.8rem;
+        }
+
+        .logout-btn {
+            color: white;
+            text-decoration: none;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #e74c3c;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-header h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .notification-bell:hover {
+            background: #f0f0f0;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .refresh-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .refresh-control button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .refresh-control button:hover {
+            background: #2980b9;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        #map-container {
+            flex: 2;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        #sidebar {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        #no-signal {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #7f8c8d;
+            padding: 40px 20px;
+        }
+
+        #no-signal i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        #no-signal p {
+            margin: 0;
+            text-align: center;
+        }
+
+        #signal-info-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .signal-info {
+            background: white;
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .signal-name {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #2c3e50;
+        }
+
+        .signal-state {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .state-green {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .state-yellow {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .state-red {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .state-offline {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .signal-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-row span:first-child {
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            transition: width 1s linear;
+        }
+
+        .green-bar {
+            background: #28a745;
+        }
+
+        .yellow-bar {
+            background: #ffc107;
+        }
+
+        .red-bar {
+            background: #dc3545;
+        }
+
+        .timer-display {
+            font-weight: 600;
+            color: #28a745;
+        }
+
+        .signal-marker {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .signal-marker:hover {
+            transform: scale(1.2);
+        }
+
+        .connection-status {
+            margin-left: 15px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-traffic-light"></i> IntelliTraffic</h1>
+                <p>Admin Dashboard</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active"><a href="#"><i class="fas fa-map-marked-alt"></i> Live Monitoring</a></li>
+                <li><a href="#"><i class="fas fa-chart-line"></i> Analytics</a></li>
+                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="#"><i class="fas fa-history"></i> History</a></li>
+                <li><a href="#"><i class="fas fa-users"></i> Users</a></li>
+                <li><a href="/admin/incident_page"><i class="fas fa-exclamation-triangle"></i> Incident Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <img src="https://via.placeholder.com/40" alt="Admin" id="admin-avatar">
+                    <div>
+                        <span id="admin-name">Loading...</span>
+                        <small>Administrator</small>
+                    </div>
+                </div>
+                <a href="#" class="logout-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="navbar-left">
+        <button class="hamburger" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <h2><i class="fas fa-traffic-light"></i> Live Traffic Signal Monitoring</h2>
+    </div>
+                <div class="header-actions">
+                    <div class="connection-status" id="connection-status">Connecting...</div>
+                    <div class="notification-bell" id="notificationsBtn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notification-count">0</span>
+                    </div>
+                    <div class="refresh-control">
+                        <button id="refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <div id="map-container">
+                    <div id="map"></div>
+                </div>
+                <div id="sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fas fa-info-circle"></i> Signal Information</h3>
+                    </div>
+                    <div id="no-signal">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <p>Click on a signal marker to view details</p>
+                    </div>
+                    <div id="signal-info-container"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Mapbox setup
+        mapboxgl.accessToken = 'pk.eyJ1IjoibGlvbmVsLTEwIiwiYSI6ImNtY202YnNrNzBqMXcyanM5MmJxcGd3eTcifQ.nRr1tRDNvPFgeTMgfO_H4Q';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [88.3713, 22.4897],
+            zoom: 12
+        });
+
+        // Store signal data and markers
+        const signals = {};
+        const markers = {};
+        let selectedSignal = null;
+        let socket = null;
+        let isConnected = false;
+        let updateInterval = null;
+        let reconnectTimeout = null;
+        let alerts = [];
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            console.log('Connecting to WebSocket server at:', wsUrl);
+            
+            try {
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = () => {
+                    console.log('Connected to WebSocket server');
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    clearTimeout(reconnectTimeout);
+                };
+                
+                socket.onclose = (event) => {
+                    console.log('WebSocket connection closed:', event.code, event.reason);
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                    
+                    // Try to reconnect after 5 seconds
+                    reconnectTimeout = setTimeout(connectWebSocket, 5000);
+                };
+                
+                socket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateConnectionStatus(false);
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'signal_update') {
+                            updateSignalStatus(data.signal_id, data.data);
+                        } else if (data.type === 'initial_signals') {
+                            console.log('Received initial signal data for', data.signals.length, 'signals');
+                            initMapWithSignals(data.signals);
+                        } else if (data.type === 'incident_alert') {
+                            // Show notification for new incident
+                            showIncidentNotification(data.data);
+                        } else if (data.type === 'new_alert' || data.type === 'alert_cleared') {
+                            // Update alerts
+                            loadAlerts();
+                        }
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error, event.data);
+                    }
+                };
+            } catch (error) {
+                console.error('Error creating WebSocket:', error);
+                updateConnectionStatus(false);
+                
+                // Try to reconnect after 5 seconds
+                reconnectTimeout = setTimeout(connectWebSocket, 5000);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connection-status');
+            if (statusElement) {
+                if (connected) {
+                    statusElement.textContent = 'Connected ✓';
+                    statusElement.className = 'connection-status connected';
+                } else {
+                    statusElement.textContent = 'Disconnected ✗';
+                    statusElement.className = 'connection-status disconnected';
+                }
+            }
+        }
+
+        // Initialize map with signals
+        function initMapWithSignals(signalData) {
+            console.log('Initializing map with', signalData.length, 'signals');
+            
+            // Clear existing markers
+            Object.values(markers).forEach(marker => marker.remove());
+            Object.keys(signals).forEach(key => delete signals[key]);
+            Object.keys(markers).forEach(key => delete markers[key]);
+            
+            signalData.forEach(signal => {
+                if (!signal.lat || !signal.lng) {
+                    console.warn('Signal missing coordinates:', signal);
+                    return;
+                }
+                
+                const id = signal.id;
+                
+                signals[id] = {
+                    id,
+                    name: signal.name,
+                    lat: signal.lat,
+                    lng: signal.lng,
+                    status: null
+                };
+
+                // Create marker
+                const el = document.createElement('div');
+                el.className = 'signal-marker';
+                el.innerHTML = '🚦';
+                el.style.fontSize = '24px';
+                el.style.textAlign = 'center';
+                el.style.cursor = 'pointer';
+                el.title = signal.name;
+                
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([signal.lng, signal.lat])
+                    .addTo(map);
+                
+                marker.getElement().addEventListener('click', () => {
+                    selectSignal(id);
+                });
+                
+                markers[id] = marker;
+                console.log('Added marker for signal:', signal.name);
+            });
+            
+            // Fit map to show all markers if we have signals
+            if (signalData.length > 0) {
+                const bounds = new mapboxgl.LngLatBounds();
+                signalData.forEach(signal => {
+                    bounds.extend([signal.lng, signal.lat]);
+                });
+                map.fitBounds(bounds, { padding: 50 });
+            }
+            
+            console.log('Map initialized with', Object.keys(markers).length, 'markers');
+        }
+
+        // Load signal locations from CSV as fallback
+        async function loadSignalsFallback() {
+            try {
+                const response = await fetch('/api/signals');
+                const data = await response.json();
+                
+                if (data.ok && data.signals) {
+                    initMapWithSignals(data.signals.map(signal => ({
+                        id: signal.SL_No,
+                        name: signal.Name,
+                        lat: parseDMS(signal.Latitude),
+                        lng: parseDMS(signal.Longitude)
+                    })));
+                }
+            } catch (error) {
+                console.error('Failed to load signals:', error);
+            }
+        }
+
+        function parseDMS(coord) {
+            if (!coord) return 0;
+            
+            const parts = coord.split(/[°'"\s]+/).filter(p => p);
+            if (parts.length < 4) return 0;
+            
+            const degrees = parseFloat(parts[0]);
+            const minutes = parseFloat(parts[1]);
+            const seconds = parseFloat(parts[2]);
+            const direction = parts[3];
+            
+            let dd = degrees + minutes/60 + seconds/3600;
+            if (direction === 'S' || direction === 'W') dd *= -1;
+            return dd;
+        }
+
+        function updateSignalStatus(id, status) {
+            if (!signals[id]) return;
+            
+            signals[id].status = status;
+            
+            if (selectedSignal === id) {
+                updateSignalInfo(id);
+                // Start timer if we have a green signal with remaining time
+                if (status.state === 'GREEN' && status.remaining_time) {
+                    startTimer(id, status.remaining_time);
+                } else {
+                    clearTimer();
+                }
+            }
+        }
+
+        function startTimer(id, initialTime) {
+            clearTimer();
+            let timeLeft = initialTime;
+            
+            updateInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft <= 0) {
+                    clearTimer();
+                    return;
+                }
+                
+                // Update the timer display
+                const timerElement = document.querySelector('.timer-display');
+                if (timerElement) {
+                    timerElement.textContent = `${timeLeft}s`;
+                }
+                
+                // Update progress bar
+                const signal = signals[id];
+                if (signal && signal.status && signal.status.green_time) {
+                    const percentage = (timeLeft / signal.status.green_time) * 100;
+                    const progressBar = document.querySelector('.progress-bar.green-bar');
+                    if (progressBar) {
+                        progressBar.style.width = `${percentage}%`;
+                    }
+                }
+            }, 1000);
+        }
+
+        function clearTimer() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+
+        function selectSignal(id) {
+            selectedSignal = id;
+            updateSignalInfo(id);
+            
+            // Center map on selected signal
+            const signal = signals[id];
+            map.flyTo({
+                center: [signal.lng, signal.lat],
+                zoom: 15
+            });
+        }
+
+        function updateSignalInfo(id) {
+            const signal = signals[id];
+            const container = document.getElementById('signal-info-container');
+            
+            if (!signal.status) {
+                container.innerHTML = `
+                    <div class="signal-info">
+                        <div class="signal-header">
+                            <span class="signal-name">${signal.name}</span>
+                            <span class="signal-state state-offline">OFFLINE</span>
+                        </div>
+                        <div class="signal-detail">
+                            <div class="detail-row">
+                                <span>Latitude:</span>
+                                <span>${signal.lat.toFixed(6)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>Longitude:</span>
+                                <span>${signal.lng.toFixed(6)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>Status:</span>
+                                <span>Waiting for data...</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const status = signal.status;
+            const isGreen = status.state === 'GREEN';
+            const isYellow = status.state === 'YELLOW';
+            const isRed = status.state === 'RED';
+            
+            let progressBar = '';
+            let timerDisplay = '';
+            let redLaneInfo = '';
+            let nextLaneInfo = '';
+            
+            if (isGreen && status.remaining_time) {
+                const percentage = (status.remaining_time / status.green_time) * 100;
+                progressBar = `
+                    <div class="progress-container">
+                        <div class="progress-bar green-bar" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="detail-row">
+                        <span>Time remaining:</span>
+                        <span class="timer-display">${status.remaining_time}s</span>
+                    </div>
+                `;
+                
+                if (status.red_lanes) {
+                    redLaneInfo = `
+                        <div class="detail-row">
+                            <span>Red Lanes:</span>
+                            <span>${Array.isArray(status.red_lanes) ? status.red_lanes.join(', ') : status.red_lanes}</span>
+                        </div>
+                    `;
+                }
+                
+                if (status.next_lane) {
+                    nextLaneInfo = `
+                        <div class="detail-row">
+                            <span>Next Green:</span>
+                            <span>${status.next_lane}</span>
+                        </div>
+                    `;
+                }
+            } 
+            else if (isYellow && status.yellow_time) {
+                progressBar = `
+                    <div class="progress-container">
+                        <div class="progress-bar yellow-bar" style="width: 100%"></div>
+                    </div>
+                    <div class="detail-row">
+                        <span>Changing to:</span>
+                        <span>${status.next_lane}</span>
+                    </div>
+                `;
+                
+                if (status.red_lanes) {
+                    redLaneInfo = `
+                        <div class="detail-row">
+                            <span>Red Lanes:</span>
+                            <span>${Array.isArray(status.red_lanes) ? status.red_lanes.join(', ') : status.red_lanes}</span>
+                        </div>
+                    `;
+                }
+            }
+            else if (isRed) {
+                if (status.red_lanes) {
+                    redLaneInfo = `
+                        <div class="detail-row">
+                            <span>Red Lanes:</span>
+                            <span>${Array.isArray(status.red_lanes) ? status.red_lanes.join(', ') : status.red_lanes}</span>
+                        </div>
+                    `;
+                }
+                
+                if (status.next_lane) {
+                    nextLaneInfo = `
+                        <div class="detail-row">
+                            <span>Next Green:</span>
+                            <span>${status.next_lane}</span>
+                        </div>
+                    `;
+                }
+            }
+            
+            container.innerHTML = `
+                <div class="signal-info">
+                    <div class="signal-header">
+                        <span class="signal-name">${signal.name}</span>
+                        <span class="signal-state state-${isGreen ? 'green' : isYellow ? 'yellow' : 'red'}">
+                            ${status.state}
+                        </span>
+                    </div>
+                    <div class="signal-detail">
+                        <div class="detail-row">
+                            <span>Current Lane:</span>
+                            <span>${status.current_lane}</span>
+                        </div>
+                        ${redLaneInfo}
+                        ${nextLaneInfo}
+                        <div class="detail-row">
+                            <span>Vehicles:</span>
+                            <span>${status.vehicle_count || 'N/A'}</span>
+                        </div>
+                        ${progressBar}
+                        <div class="detail-row">
+                            <span>Last update:</span>
+                            <span>${new Date(status.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('no-signal').style.display = 'none';
+        }
+
+        // Load alerts from server
+        async function loadAlerts() {
+            try {
+                const res = await fetch('/api/alert/active');
+                const data = await res.json();
+                
+                if (data.ok) {
+                    alerts = data.alerts;
+                    updateNotificationCount();
+                } else {
+                    console.error('Failed to load alerts:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+
+        // Update notification count
+        function updateNotificationCount() {
+            const countElement = document.getElementById('notification-count');
+            if (countElement) {
+                countElement.textContent = alerts.length;
+            }
+        }
+
+        // Show notifications
+        function showNotifications() {
+            // Simple alert for now - could be expanded to a modal
+            if (alerts.length === 0) {
+                alert('No active alerts');
+            } else {
+                const alertList = alerts.map(alert => 
+                    `• ${alert.type} at ${alert.address || alert.location} (${new Date(alert.timestamp).toLocaleString()})`
+                ).join('\n');
+                
+                alert(`Active Alerts:\n\n${alertList}`);
+            }
+        }
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (data.auth) {
+                    document.getElementById('admin-name').textContent = data.user.email;
+                } else {
+                    window.location.href = '/login/';
+                }
+            } catch (error) {
+                console.error('Failed to load user info:', error);
+                window.location.href = '/login/';
+            }
+        }
+
+        // Initialize
+        loadUserInfo();
+        connectWebSocket();
+        loadAlerts();
+        
+        // Load signals as fallback if WebSocket doesn't provide them
+        setTimeout(() => {
+            if (Object.keys(signals).length === 0) {
+                loadSignalsFallback();
+            }
+        }, 3000);
+
+        // Event listeners
+        document.getElementById('refresh-btn').addEventListener('click', function() {
+            if (selectedSignal) {
+                updateSignalInfo(selectedSignal);
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async function(e) {
+            e.preventDefault();
+            try {
+                await fetch('/api/auth/logout', {method: 'POST'});
+                window.location.href = '/login/';
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        });
+
+        document.getElementById('notificationsBtn').addEventListener('click', showNotifications);
+    </script>
+
+<!-- Notifications Modal -->
+<div id="notificationsModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
+  <div style="background:#fff; border-radius:8px; width:400px; max-height:80%; overflow-y:auto; padding:20px; position:relative;">
+    <button id="closeNotifications" style="position:absolute; top:10px; right:10px; background:none; border:none; font-size:18px; cursor:pointer;">&times;</button>
+    <h3 style="margin-bottom:15px;">Active Alerts</h3>
+    <div id="notificationsList"></div>
+  </div>
+</div>
+
+<style>
+.hamburger { background:none; border:none; font-size:20px; cursor:pointer; margin-right:10px; }
+.sidebar.collapsed { transform:translateX(-280px); transition:transform 0.3s ease; position:absolute; z-index:100; }
+.modal { display:flex; }
+</style>
+
+<script>
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.toggle('collapsed');
+});
+
+const modal = document.getElementById('notificationsModal');
+const closeBtn = document.getElementById('closeNotifications');
+document.getElementById('notificationsBtn').addEventListener('click', () => {
+    const list = document.getElementById('notificationsList');
+    if (alerts.length === 0) {
+        list.innerHTML = '<p>No active alerts</p>';
+    } else {
+        list.innerHTML = alerts.map(alert =>
+            `<div style="padding:10px; border-bottom:1px solid #eee;">
+                <strong>${alert.type}</strong><br>
+                ${alert.address || alert.location}<br>
+                <small>${new Date(alert.timestamp).toLocaleString()}</small>
+            </div>`
+        ).join('');
+    }
+    modal.style.display = 'flex';
+});
+closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+window.addEventListener('click', (e) => { if(e.target===modal){ modal.style.display='none'; } });
+</script>
+</body>
+</html>
